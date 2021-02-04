@@ -3,28 +3,31 @@ package com.dan.lndpandroid
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
+import android.net.wifi.WifiInfo
+import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.text.format.Formatter
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.dan.lndpandroid.databinding.ActivityMainBinding
-import io.ktor.application.call
-import io.ktor.response.respondText
-import io.ktor.http.ContentType
-import io.ktor.routing.get
-import io.ktor.routing.routing
+import io.ktor.application.*
+import io.ktor.http.*
+import io.ktor.response.*
+import io.ktor.routing.*
 import io.ktor.server.engine.*
-import io.ktor.server.netty.Netty
+import io.ktor.server.netty.*
 import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
+
 
 class MainActivity : AppCompatActivity() {
 
     companion object {
         val PERMISSIONS = arrayOf(
-            Manifest.permission.INTERNET
+            Manifest.permission.INTERNET,
+            Manifest.permission.ACCESS_WIFI_STATE
         )
 
         const val REQUEST_PERMISSIONS = 1
@@ -34,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
+    private val mWifiManager: WifiManager by lazy { getSystemService(WIFI_SERVICE) as WifiManager }
     private lateinit var mServer: ApplicationEngine
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,7 +45,11 @@ class MainActivity : AppCompatActivity() {
         if (!askPermissions()) onPermissionsAllowed()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
         when (requestCode) {
             REQUEST_PERMISSIONS -> handleRequestPermissions(grantResults)
         }
@@ -132,9 +140,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun startServer() {
         mServer.start()
+
+        @Suppress("DEPRECATION")
+        val ip = Formatter.formatIpAddress( mWifiManager.getConnectionInfo().ipAddress )
+        mBinding.txtUrl.text = "http://${ip}:${PORT}/"
     }
 
     private fun stopServer() {
+        mBinding.txtUrl.text = ""
         mServer.stop(250L, 250L, TimeUnit.MILLISECONDS)
     }
 }
