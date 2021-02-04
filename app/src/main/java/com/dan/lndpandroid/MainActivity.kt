@@ -15,8 +15,9 @@ import io.ktor.response.respondText
 import io.ktor.http.ContentType
 import io.ktor.routing.get
 import io.ktor.routing.routing
-import io.ktor.server.engine.embeddedServer
+import io.ktor.server.engine.*
 import io.ktor.server.netty.Netty
+import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
 
 class MainActivity : AppCompatActivity() {
@@ -28,9 +29,12 @@ class MainActivity : AppCompatActivity() {
 
         const val REQUEST_PERMISSIONS = 1
         const val INTENT_SELECT_FOLDER = 2
+
+        const val PORT = 1234
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
+    private lateinit var mServer: ApplicationEngine
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,6 +66,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun onPermissionsAllowed() {
         setContentView(mBinding.root)
+
+        mServer = embeddedServer(Netty, port = PORT) {
+            routing {
+                get("/") {
+                    call.respondText("Hello World!", ContentType.Text.Plain)
+                }
+                get("/demo") {
+                    call.respondText("HELLO WORLD!")
+                }
+            }
+        }
+
         startServer()
     }
 
@@ -115,16 +131,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startServer() {
-        val server = embeddedServer(Netty, port = 8080) {
-            routing {
-                get("/") {
-                    call.respondText("Hello World!", ContentType.Text.Plain)
-                }
-                get("/demo") {
-                    call.respondText("HELLO WORLD!")
-                }
-            }
-        }
-        server.start()
+        mServer.start()
+    }
+
+    private fun stopServer() {
+        mServer.stop(250L, 250L, TimeUnit.MILLISECONDS)
     }
 }
