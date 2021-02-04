@@ -3,40 +3,47 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".MainActivity">
+        android:orientation="vertical"
+        android:padding="32dp">
 
-        <LinearLayout
-            android:layout_width="wrap_content"
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            android:text="Name:" />
 
-            <Button
-                android:id="@+id/btnSelectFolder"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Select public folder"
-                android:textAllCaps="false" />
+        <EditText
+            android:id="@+id/txtName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:ems="10"
+            android:inputType="textPersonName" />
 
-            <TextView
-                android:id="@+id/txtFolderInfo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+        <TextView
+            android:id="@+id/textView2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Folder" />
 
-            <Button
-                android:id="@+id/btnStartServer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Start Server"
-                android:textAllCaps="false" />
-        </LinearLayout>
+        <Button
+            android:id="@+id/btnSelectFolder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="Select folder"
+            android:textAllCaps="false" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        <Button
+            android:id="@+id/btnStartServer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Start Server"
+            android:textAllCaps="false" />
+
+    </LinearLayout>
 
 </layout>
