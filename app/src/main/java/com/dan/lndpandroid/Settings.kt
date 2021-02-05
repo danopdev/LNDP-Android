@@ -11,6 +11,7 @@ Settings: all public var fields will be save / restaured
  */
 class Settings( private val activity: Activity) {
 
+    var serverName = android.os.Build.MODEL ?: ""
     var serverUri: String = ""
 
     init {

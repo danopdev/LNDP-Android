@@ -1,8 +1,12 @@
 package com.dan.lndpandroid
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
@@ -27,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         val PERMISSIONS = arrayOf(
             Manifest.permission.INTERNET,
+            Manifest.permission.ACCESS_NETWORK_STATE,
             Manifest.permission.ACCESS_WIFI_STATE
         )
 
@@ -38,18 +43,59 @@ class MainActivity : AppCompatActivity() {
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val mWifiManager: WifiManager by lazy { getSystemService(WIFI_SERVICE) as WifiManager }
-    private lateinit var mServer: ApplicationEngine
+    private val mConnectivityManager: ConnectivityManager by lazy { getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager }
+    private var mServer: ApplicationEngine? = null
+    private var mWifiConnected = false
+    private val mSettings: Settings by lazy { Settings(this) }
+
+    private val mConnectivityManagerNetworkCallback = object: ConnectivityManager.NetworkCallback() {
+        override fun onUnavailable() {
+            updateWifiState()
+        }
+
+        override fun onAvailable(network: Network) {
+            updateWifiState()
+        }
+
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            updateWifiState()
+        }
+
+        override fun onLost(network: Network) {
+            updateWifiState()
+        }
+    }
+
+    private fun updateWifiState() {
+        var wifiConnected = false
+
+        mConnectivityManager.activeNetwork?.let { network ->
+            mConnectivityManager.getNetworkCapabilities(network)?.let { networkCapabilities ->
+                wifiConnected = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+            }
+        }
+
+        if (wifiConnected != mWifiConnected) {
+            mWifiConnected = wifiConnected
+            updateServerState()
+        }
+    }
+
+    private fun updateServerState() {
+        if (!mWifiConnected && null != mServer) {
+            stopServer()
+        }
+
+        mBinding.btnStartServer.isEnabled = null == mServer && mBinding.txtName.text.isNotEmpty() && mSettings.serverUri.isNotEmpty()
+        mBinding.btnStopServer.isEnabled = null != mServer
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (!askPermissions()) onPermissionsAllowed()
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         when (requestCode) {
             REQUEST_PERMISSIONS -> handleRequestPermissions(grantResults)
         }
@@ -75,18 +121,14 @@ class MainActivity : AppCompatActivity() {
     private fun onPermissionsAllowed() {
         setContentView(mBinding.root)
 
-        mServer = embeddedServer(Netty, port = PORT) {
-            routing {
-                get("/") {
-                    call.respondText("Hello World!", ContentType.Text.Plain)
-                }
-                get("/demo") {
-                    call.respondText("HELLO WORLD!")
-                }
-            }
-        }
+        mBinding.btnStartServer.setOnClickListener { startServer() }
+        mBinding.btnStopServer.setOnClickListener { stopServer() }
 
-        startServer()
+        mBinding.txtName.setText(mSettings.serverName)
+
+        mConnectivityManager.registerDefaultNetworkCallback(mConnectivityManagerNetworkCallback)
+        updateWifiState()
+        updateServerState()
     }
 
     private fun askPermissions(): Boolean {
@@ -139,15 +181,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startServer() {
-        mServer.start()
-
         @Suppress("DEPRECATION")
         val ip = Formatter.formatIpAddress( mWifiManager.getConnectionInfo().ipAddress )
+
+        val server = embeddedServer(Netty, port = PORT, host = ip) {
+            routing {
+                get("/") {
+                    call.respondText("Hello World!", ContentType.Text.Plain)
+                }
+                get("/demo") {
+                    call.respondText("HELLO WORLD!")
+                }
+            }
+        }
+
+        server.start()
+
         mBinding.txtUrl.text = "http://${ip}:${PORT}/"
+        mServer = server
     }
 
     private fun stopServer() {
         mBinding.txtUrl.text = ""
-        mServer.stop(250L, 250L, TimeUnit.MILLISECONDS)
+        mServer?.stop(250L, 250L, TimeUnit.MILLISECONDS)
+        mServer = null
     }
 }
