@@ -7,7 +7,8 @@ import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.wifi.WifiInfo
+import android.net.nsd.NsdManager
+import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.text.format.Formatter
@@ -22,6 +23,8 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import java.lang.Exception
+import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
 
@@ -38,12 +41,14 @@ class MainActivity : AppCompatActivity() {
         const val REQUEST_PERMISSIONS = 1
         const val INTENT_SELECT_FOLDER = 2
 
+        const val SERVICE_TYPE = "_lndp._tcp"
         const val PORT = 1234
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private val mWifiManager: WifiManager by lazy { getSystemService(WIFI_SERVICE) as WifiManager }
     private val mConnectivityManager: ConnectivityManager by lazy { getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager }
+    private val mNsdManager: NsdManager by lazy { getSystemService(Context.NSD_SERVICE) as NsdManager }
     private var mServer: ApplicationEngine? = null
     private var mWifiConnected = false
     private val mSettings: Settings by lazy { Settings(this) }
@@ -63,6 +68,20 @@ class MainActivity : AppCompatActivity() {
 
         override fun onLost(network: Network) {
             updateWifiState()
+        }
+    }
+
+    private val mNsdManagerRegistrationListener = object: NsdManager.RegistrationListener {
+        override fun onRegistrationFailed(serviceInfo: NsdServiceInfo?, errorCode: Int) {
+        }
+
+        override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo?, errorCode: Int) {
+        }
+
+        override fun onServiceRegistered(serviceInfo: NsdServiceInfo?) {
+        }
+
+        override fun onServiceUnregistered(serviceInfo: NsdServiceInfo?) {
         }
     }
 
@@ -182,28 +201,60 @@ class MainActivity : AppCompatActivity() {
 
     private fun startServer() {
         @Suppress("DEPRECATION")
-        val ip = Formatter.formatIpAddress( mWifiManager.getConnectionInfo().ipAddress )
+        val ip = Formatter.formatIpAddress(mWifiManager.getConnectionInfo().ipAddress)
 
-        val server = embeddedServer(Netty, port = PORT, host = ip) {
-            routing {
-                get("/") {
-                    call.respondText("Hello World!", ContentType.Text.Plain)
-                }
-                get("/demo") {
-                    call.respondText("HELLO WORLD!")
+        try {
+            val server = embeddedServer(Netty, port = PORT, host = ip) {
+                routing {
+                    get("/") {
+                        call.respondText("Hello World!", ContentType.Text.Plain)
+                    }
+                    get("/demo") {
+                        call.respondText("HELLO WORLD!")
+                    }
                 }
             }
+
+            server.start()
+            mServer = server
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return
         }
 
-        server.start()
-
         mBinding.txtUrl.text = "http://${ip}:${PORT}/"
-        mServer = server
+
+        val serviceInfo = NsdServiceInfo()
+        serviceInfo.serviceName = mBinding.txtName.text.toString()
+        serviceInfo.serviceType = SERVICE_TYPE
+        serviceInfo.port = PORT
+        serviceInfo.host = InetAddress.getByName(ip)
+
+        try {
+            mNsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, mNsdManagerRegistrationListener)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        mSettings.serverUri = mBinding.txtName.text.toString()
+        updateServerState()
     }
 
     private fun stopServer() {
+        try {
+            mNsdManager.unregisterService(mNsdManagerRegistrationListener)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         mBinding.txtUrl.text = ""
-        mServer?.stop(250L, 250L, TimeUnit.MILLISECONDS)
+        try {
+            mServer?.stop(250L, 250L, TimeUnit.MILLISECONDS)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         mServer = null
+        updateServerState()
     }
 }
