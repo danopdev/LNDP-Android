@@ -2,6 +2,7 @@ package com.dan.lndpandroid
 
 import android.app.Activity
 import android.content.Context
+import java.net.URLDecoder
 import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberProperties
@@ -16,7 +17,8 @@ class Settings( private val activity: Activity) {
 
     val publicFolderName: String
         get() {
-            val pathFields = publicFolderUri.split(':')
+            val uriStr = URLDecoder.decode(publicFolderUri)
+            val pathFields = uriStr.split(':')
             if (pathFields.size <= 1) {
                 return publicFolderUri
             } else {

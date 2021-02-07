@@ -129,6 +129,7 @@ class MainActivity : AppCompatActivity() {
             if (data is Uri) {
                 mSettings.publicFolderUri = data.toString()
                 mBinding.txtFolder.text = mSettings.publicFolderName
+                updateServerState()
             }
         }
     }
@@ -138,6 +139,20 @@ class MainActivity : AppCompatActivity() {
 
         mBinding.btnStartServer.setOnClickListener { startServer() }
         mBinding.btnStopServer.setOnClickListener { stopServer() }
+
+        mBinding.btnSelectFolder.setOnClickListener {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            intent.putExtra("android.content.extra.SHOW_ADVANCED", true)
+            intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true)
+            intent.addFlags(
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PREFIX_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            )
+
+            startActivityForResult(intent, INTENT_SELECT_FOLDER)
+        }
 
         mBinding.txtName.setText(mSettings.serverName)
         mBinding.txtFolder.text = mSettings.publicFolderName
