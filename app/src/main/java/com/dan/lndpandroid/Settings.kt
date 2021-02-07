@@ -12,7 +12,17 @@ Settings: all public var fields will be save / restaured
 class Settings( private val activity: Activity) {
 
     var serverName = android.os.Build.MODEL ?: ""
-    var serverUri: String = ""
+    var publicFolderUri: String = ""
+
+    val publicFolderName: String
+        get() {
+            val pathFields = publicFolderUri.split(':')
+            if (pathFields.size <= 1) {
+                return publicFolderUri
+            } else {
+                return pathFields[pathFields.size-1]
+            }
+        }
 
     init {
         loadProperties()

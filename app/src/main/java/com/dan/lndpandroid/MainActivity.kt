@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
@@ -105,7 +106,7 @@ class MainActivity : AppCompatActivity() {
             stopServer()
         }
 
-        mBinding.btnStartServer.isEnabled = null == mServer && mBinding.txtName.text.isNotEmpty() && mSettings.serverUri.isNotEmpty()
+        mBinding.btnStartServer.isEnabled = null == mServer && mBinding.txtName.text.isNotEmpty() && mSettings.publicFolderUri.isNotEmpty()
         mBinding.btnStopServer.isEnabled = null != mServer
     }
 
@@ -124,16 +125,11 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, intent)
 
         if (INTENT_SELECT_FOLDER == requestCode && RESULT_OK == resultCode && null != intent) {
-            /*
             val data = intent.data
             if (data is Uri) {
-                mSaveFolder = DocumentFile.fromTreeUri(applicationContext, data)
-                settings.saveUri = data.toString()
-                settings.saveProperties()
-
-                if (mFirstCall) onValidSaveFolder()
+                mSettings.publicFolderUri = data.toString()
+                mBinding.txtFolder.text = mSettings.publicFolderName
             }
-            */
         }
     }
 
@@ -144,6 +140,7 @@ class MainActivity : AppCompatActivity() {
         mBinding.btnStopServer.setOnClickListener { stopServer() }
 
         mBinding.txtName.setText(mSettings.serverName)
+        mBinding.txtFolder.text = mSettings.publicFolderName
 
         mConnectivityManager.registerDefaultNetworkCallback(mConnectivityManagerNetworkCallback)
         updateWifiState()
@@ -236,7 +233,9 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
         }
 
-        mSettings.serverUri = mBinding.txtName.text.toString()
+        mSettings.serverName = mBinding.txtName.text.toString()
+        mSettings.saveProperties()
+
         updateServerState()
     }
 
