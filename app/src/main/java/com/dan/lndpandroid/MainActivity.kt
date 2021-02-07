@@ -211,6 +211,26 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun lndpGetDocuemntId(val uri: String): String {
+        if (uri == mSettings.publicFolderUri) return "/"
+        return mSettings.publicFolderUri.substring(mSettings.publicUriBase.length)
+    }
+
+    private fun lndpGetUri(val documentId: String): String {
+        if (documentId == "/") return mSettings.publicFolderUri
+        return mSettings.publicUriBase + documentId
+    }
+
+    private fun lndpQueryDocument(val path: String): String? {
+        try {
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return null
+    }
+
     private fun startServer() {
         @Suppress("DEPRECATION")
         val ip = Formatter.formatIpAddress(mWifiManager.getConnectionInfo().ipAddress)
@@ -218,7 +238,7 @@ class MainActivity : AppCompatActivity() {
         try {
             val server = embeddedServer(Netty, port = PORT, host = ip) {
                 routing {
-                    get("/") {
+                    get("/lndp/queryDocument") {
                         call.respondText("Hello World!", ContentType.Text.Plain)
                     }
                     get("/demo") {

@@ -26,6 +26,13 @@ class Settings( private val activity: Activity) {
             }
         }
 
+    val publicUriBase: String
+        get() {
+            val index = publicFolderUri.indexOf("%3A")
+            if (index < 0) return ""
+            return publicFolderUri.substring(0, index)
+        }
+
     init {
         loadProperties()
     }
