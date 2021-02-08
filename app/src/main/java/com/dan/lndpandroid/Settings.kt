@@ -15,25 +15,6 @@ class Settings( private val activity: Activity) {
     var serverName = android.os.Build.MODEL ?: ""
     var publicFolderUri: String = ""
 
-    val publicFolderName: String
-        get() {
-            @Suppress("DEPRECATION")
-            val uriStr = URLDecoder.decode(publicFolderUri)
-            val pathFields = uriStr.split(':')
-            if (pathFields.size <= 1) {
-                return publicFolderUri
-            } else {
-                return pathFields[pathFields.size-1]
-            }
-        }
-
-    val publicUriBase: String
-        get() {
-            val index = publicFolderUri.indexOf("%3A")
-            if (index < 0) return ""
-            return publicFolderUri.substring(0, index)
-        }
-
     init {
         loadProperties()
     }
