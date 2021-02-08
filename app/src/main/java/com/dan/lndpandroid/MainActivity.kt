@@ -378,7 +378,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        mBinding.txtUrl.text = "http://${ip}:${Settings.PORT}/"
+        mBinding.txtUrl.text = "${ip}:${Settings.PORT}"
 
         val serviceInfo = NsdServiceInfo()
         serviceInfo.serviceName = mBinding.txtName.text.toString()
