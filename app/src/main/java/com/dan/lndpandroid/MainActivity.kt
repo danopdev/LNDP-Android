@@ -109,7 +109,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateServerState() {
         if (!mWifiConnected && null != mServer) {
-            stopServer()
+            runOnUiThread {
+                stopServer()
+            }
         }
 
         mBinding.btnStartServer.isEnabled = null == mServer && mBinding.txtName.text.isNotEmpty() && mSettings.publicFolderUri.isNotEmpty()
