@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
         const val SERVICE_TYPE = "_lndp._tcp"
         const val PORT = 1234
 
-        const val THUMBNAIL_SIZE = 400
+        const val THUMBNAIL_SIZE = 300
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
