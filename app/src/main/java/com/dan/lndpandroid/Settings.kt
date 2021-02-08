@@ -12,6 +12,10 @@ Settings: all public var fields will be save / restaured
  */
 class Settings( private val activity: Activity) {
 
+    companion object {
+        const val URL_TIMEOUT = 20000
+    }
+
     var serverName = android.os.Build.MODEL ?: ""
     var publicFolderUri: String = ""
 

@@ -356,7 +356,7 @@ class MainActivity : AppCompatActivity() {
 
                         try {
                             call.request.queryParameters.get("path")?.let{ documentId ->
-                                lndpGetUriFile(documentId)?.getThumbnail()?.let{ bitmap ->
+                                lndpGetUriFile(documentId).getThumbnail()?.let{ bitmap ->
                                     val bos = ByteArrayOutputStream()
                                     bitmap.compress(Bitmap.CompressFormat.JPEG, 70 , bos)
                                     output = bos.toByteArray()
