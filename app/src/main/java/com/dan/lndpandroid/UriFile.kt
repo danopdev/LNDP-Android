@@ -51,7 +51,7 @@ class UriFile(
                     val indexDate = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
                     val indexFlags = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_FLAGS)
 
-                    if (indexDocumentId >= 0 && indexDisplayName >= 0 && indexMimeType >= 0 && indexSize >= 0 && indexDate >= 0) {
+                    if (indexDocumentId >= 0 && indexDisplayName >= 0 && indexMimeType >= 0 && indexSize >= 0) {
                         while (cursor.moveToNext()) {
                             val documentId = cursor.getString(indexDocumentId)
                             result.add(
@@ -63,7 +63,7 @@ class UriFile(
                                     cursor.getInt(indexFlags),
                                     cursor.getString(indexDisplayName),
                                     cursor.getString(indexMimeType),
-                                    cursor.getLong(indexDate),
+                                    if (indexDate < 0) 0L else cursor.getLong(indexDate),
                                     cursor.getLong(indexSize)
                                 )
                             )
@@ -87,14 +87,18 @@ class UriFile(
 
         fun formatTimeStamp(timestamp: Long) = DATE_FORMAT.format(Date(timestamp))
 
+        fun fromDocumentId( context: Context, treeUri: Uri, documentId: String ): UriFile? {
+            val uri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
+            val list = queryTreeUri(context, uri, uri, true)
+            return if (list.size > 0) list[0] else null
+        }
+
         fun fromTreeUri(context: Context, treeUri: Uri): UriFile? {
             val documentId =
                 if (DocumentsContract.isDocumentUri(context, treeUri) ) DocumentsContract.getDocumentId(treeUri)
                 else DocumentsContract.getTreeDocumentId(treeUri)
 
-            val uri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
-            val list = queryTreeUri(context, uri, uri, true)
-            return if (list.size > 0) list[0] else null
+            return fromDocumentId( context, treeUri, documentId)
         }
     }
 
