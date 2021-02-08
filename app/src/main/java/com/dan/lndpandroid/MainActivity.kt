@@ -356,16 +356,12 @@ class MainActivity : AppCompatActivity() {
 
                         try {
                             call.request.queryParameters.get("path")?.let{ documentId ->
-                                contentResolver?.loadThumbnail(
-                                    lndpGetUriFile(documentId).uri,
-                                    Size(THUMBNAIL_SIZE, THUMBNAIL_SIZE),
-                                    null )
-                                    ?.let{ bitmap ->
-                                        val bos = ByteArrayOutputStream()
-                                        bitmap.compress(Bitmap.CompressFormat.JPEG, 70 , bos)
-                                        output = bos.toByteArray()
-                                        outputSize = output?.size ?: 0
-                                    }
+                                lndpGetUriFile(documentId)?.getThumbnail()?.let{ bitmap ->
+                                    val bos = ByteArrayOutputStream()
+                                    bitmap.compress(Bitmap.CompressFormat.JPEG, 70 , bos)
+                                    output = bos.toByteArray()
+                                    outputSize = output?.size ?: 0
+                                }
                             }
                        } catch(e: Exception) {
                             e.printStackTrace()
