@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -13,6 +14,7 @@ import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.text.format.Formatter
+import android.util.Size
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -24,8 +26,13 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.OutputStream
 import java.lang.Exception
 import java.net.InetAddress
+import java.net.URLDecoder
 import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
 
@@ -44,6 +51,8 @@ class MainActivity : AppCompatActivity() {
 
         const val SERVICE_TYPE = "_lndp._tcp"
         const val PORT = 1234
+
+        const val THUMBNAIL_SIZE = 400
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
@@ -53,6 +62,8 @@ class MainActivity : AppCompatActivity() {
     private var mServer: ApplicationEngine? = null
     private var mWifiConnected = false
     private val mSettings: Settings by lazy { Settings(this) }
+    private lateinit var mPublicUriFile: UriFile
+
 
     private val mConnectivityManagerNetworkCallback = object: ConnectivityManager.NetworkCallback() {
         override fun onUnavailable() {
@@ -128,7 +139,7 @@ class MainActivity : AppCompatActivity() {
             val data = intent.data
             if (data is Uri) {
                 mSettings.publicFolderUri = data.toString()
-                mBinding.txtFolder.text = mSettings.publicFolderName
+                mBinding.txtFolder.text = getFolderName(mSettings.publicFolderUri)
                 updateServerState()
             }
         }
@@ -155,7 +166,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         mBinding.txtName.setText(mSettings.serverName)
-        mBinding.txtFolder.text = mSettings.publicFolderName
+        mBinding.txtFolder.text = getFolderName(mSettings.publicFolderUri)
 
         mConnectivityManager.registerDefaultNetworkCallback(mConnectivityManagerNetworkCallback)
         updateWifiState()
@@ -211,24 +222,81 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun lndpGetDocuemntId(val uri: String): String {
-        if (uri == mSettings.publicFolderUri) return "/"
-        return mSettings.publicFolderUri.substring(mSettings.publicUriBase.length)
+    private fun getFolderName( uriStr: String ): String {
+        @Suppress("DEPRECATION")
+        val pathFields = URLDecoder.decode(uriStr).split(':')
+        if (pathFields.size <= 1) {
+            return mSettings.publicFolderUri
+        } else {
+            return pathFields[pathFields.size-1]
+        }
     }
 
-    private fun lndpGetUri(val documentId: String): String {
-        if (documentId == "/") return mSettings.publicFolderUri
-        return mSettings.publicUriBase + documentId
+    private fun lndpGetDocuemntId(uriFile: UriFile): String {
+        return uriFile.documentId
     }
 
-    private fun lndpQueryDocument(val path: String): String? {
+    private fun lndpGetUriFile(documentId: String): UriFile {
+        if (documentId == "/") return mPublicUriFile
+        return UriFile.fromDocumentId( applicationContext, mPublicUriFile.uri, documentId ) ?: throw Exception("Invalid documentId")
+    }
+
+    private fun lndpQueryResponse(files: ArrayList<UriFile>): String {
+        val jsonArray = JSONArray()
+
+        for( file in files ) {
+            val jsonObject = JSONObject()
+            jsonObject.put("id", lndpGetDocuemntId(file))
+            jsonObject.put("name", file.name)
+            jsonObject.put("isdir", file.isDirectory)
+            jsonObject.put("isreadonly", true)
+            jsonObject.put("size", file.length)
+            jsonObject.put("date", file.timestamp)
+            jsonObject.put("type", file.mimeType)
+            jsonObject.put("thumb", file.supportThumbnails)
+
+            jsonArray.put(jsonObject)
+        }
+
+        return jsonArray.toString()
+    }
+
+    private fun lndpQueryDocument(documentId: String): String? {
         try {
-
+            return lndpQueryResponse( arrayListOf(lndpGetUriFile(documentId)) )
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
         return null
+    }
+
+    private fun lndpQueryChildDocuments(documentId: String): String? {
+        try {
+            return lndpQueryResponse( lndpGetUriFile(documentId).listFiles() )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return null
+    }
+
+    private suspend fun lndpRespondText( call: ApplicationCall, output: String?, contentType: ContentType ) {
+        if (null == output) {
+            call.respondText("", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
+        } else {
+            call.respondText( output, contentType)
+        }
+    }
+
+    private suspend fun lndpRespondBinary( call: ApplicationCall, output: ByteArray?, outputSize: Int, contentType: ContentType ) {
+        if (null == output) {
+            call.respondText("", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
+        } else {
+            call.respondOutputStream(contentType, HttpStatusCode.OK ) {
+                write(output, 0, outputSize)
+            }
+        }
     }
 
     private fun startServer() {
@@ -239,12 +307,77 @@ class MainActivity : AppCompatActivity() {
             val server = embeddedServer(Netty, port = PORT, host = ip) {
                 routing {
                     get("/lndp/queryDocument") {
-                        call.respondText("Hello World!", ContentType.Text.Plain)
+                        var output: String? = null
+                        call.request.queryParameters.get("path")?.let { documentId ->
+                            output = lndpQueryDocument(documentId)
+                        }
+                        lndpRespondText(call, output, ContentType.Application.Json)
                     }
-                    get("/demo") {
-                        call.respondText("HELLO WORLD!")
+
+                    get("/lndp/queryChildDocuments") {
+                        var output: String? = null
+                        call.request.queryParameters.get("path")?.let { documentId ->
+                            output = lndpQueryChildDocuments(documentId)
+                        }
+                        lndpRespondText(call, output, ContentType.Application.Json)
+                    }
+
+                    get("/lndp/documentRead") {
+                        var output: ByteArray? = null
+                        var outputSize = 0
+
+                        try {
+                            val documentId = call.request.queryParameters.get("path")
+                            val offsetStr = call.request.queryParameters.get("offset") ?: "0"
+                            val offset = offsetStr.toInt()
+                            val sizeStr = call.request.queryParameters.get("size") ?: "0"
+                            val size = sizeStr.toInt()
+
+                            if (null != documentId && offset >= 0 && size > 0) {
+                                val uriFile = lndpGetUriFile(documentId)
+                                contentResolver.openInputStream(uriFile.uri)?.let{ inputStream ->
+                                    if (offset > 0) inputStream.skip(offset.toLong())
+                                    val buffer = ByteArray(size)
+                                    outputSize = inputStream.read(buffer)
+                                    if (outputSize > 0) output = buffer
+                                    inputStream.close()
+                                }
+                            }
+                        } catch(e: Exception) {
+                            e.printStackTrace()
+                        }
+
+                        lndpRespondBinary(call, output, outputSize, ContentType.Application.OctetStream)
+                    }
+
+                    get("/lndp/documentReadThumb") {
+                        var output: ByteArray? = null
+                        var outputSize = 0
+
+                        try {
+                            call.request.queryParameters.get("path")?.let{ documentId ->
+                                contentResolver?.loadThumbnail(
+                                    lndpGetUriFile(documentId).uri,
+                                    Size(THUMBNAIL_SIZE, THUMBNAIL_SIZE),
+                                    null )
+                                    ?.let{ bitmap ->
+                                        val bos = ByteArrayOutputStream()
+                                        bitmap.compress(Bitmap.CompressFormat.JPEG, 70 , bos)
+                                        output = bos.toByteArray()
+                                        outputSize = output?.size ?: 0
+                                    }
+                            }
+                       } catch(e: Exception) {
+                            e.printStackTrace()
+                        }
+
+                        lndpRespondBinary(call, output, outputSize, ContentType.Image.JPEG)
                     }
                 }
+            }
+
+            UriFile.fromTreeUri(applicationContext, Uri.parse(mSettings.publicFolderUri))?.let{ uriFile ->
+                mPublicUriFile = uriFile
             }
 
             server.start()
