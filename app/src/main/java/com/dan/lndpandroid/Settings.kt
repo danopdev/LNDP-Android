@@ -17,6 +17,7 @@ class Settings( private val activity: Activity) {
 
     val publicFolderName: String
         get() {
+            @Suppress("DEPRECATION")
             val uriStr = URLDecoder.decode(publicFolderUri)
             val pathFields = uriStr.split(':')
             if (pathFields.size <= 1) {
