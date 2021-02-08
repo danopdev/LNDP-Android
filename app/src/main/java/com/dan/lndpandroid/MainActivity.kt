@@ -48,11 +48,6 @@ class MainActivity : AppCompatActivity() {
 
         const val REQUEST_PERMISSIONS = 1
         const val INTENT_SELECT_FOLDER = 2
-
-        const val SERVICE_TYPE = "_lndp._tcp"
-        const val PORT = 1234
-
-        const val THUMBNAIL_SIZE = 300
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
@@ -304,7 +299,7 @@ class MainActivity : AppCompatActivity() {
         val ip = Formatter.formatIpAddress(mWifiManager.getConnectionInfo().ipAddress)
 
         try {
-            val server = embeddedServer(Netty, port = PORT, host = ip) {
+            val server = embeddedServer(Netty, port = Settings.PORT, host = ip) {
                 routing {
                     get("/lndp/queryDocument") {
                         var output: String? = null
@@ -383,12 +378,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        mBinding.txtUrl.text = "http://${ip}:${PORT}/"
+        mBinding.txtUrl.text = "http://${ip}:${Settings.PORT}/"
 
         val serviceInfo = NsdServiceInfo()
         serviceInfo.serviceName = mBinding.txtName.text.toString()
-        serviceInfo.serviceType = SERVICE_TYPE
-        serviceInfo.port = PORT
+        serviceInfo.serviceType = Settings.SERVICE_TYPE
+        serviceInfo.port = Settings.PORT
         serviceInfo.host = InetAddress.getByName(ip)
 
         try {

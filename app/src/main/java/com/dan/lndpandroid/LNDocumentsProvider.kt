@@ -36,8 +36,6 @@ class LNDocumentsProvider : DocumentsProvider() {
 
         const val AUTHORITY = "com.dan.lndpandroid"
 
-        const val SERVICE_TYPE = "_lndp._tcp"
-
         const val BUFFER_SIZE = 1024*500
 
         private val DEFAULT_ROOT_PROJECTION = arrayOf<String>(
@@ -137,7 +135,7 @@ class LNDocumentsProvider : DocumentsProvider() {
     private fun startDiscovery() {
         GlobalScope.launch(Dispatchers.Main) {
             try {
-                nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
+                nsdManager.discoverServices(Settings.SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
             } catch (e: Exception) {
             }
         }

@@ -13,6 +13,11 @@ Settings: all public var fields will be save / restaured
 class Settings( private val activity: Activity) {
 
     companion object {
+        const val SERVICE_TYPE = "_lndp._tcp"
+        const val PORT = 1234
+
+        const val THUMBNAIL_SIZE = 300
+
         const val URL_TIMEOUT = 20000
     }
 
