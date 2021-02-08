@@ -14,7 +14,6 @@ import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.text.format.Formatter
-import android.util.Size
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -29,7 +28,6 @@ import io.ktor.server.netty.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
-import java.io.OutputStream
 import java.lang.Exception
 import java.net.InetAddress
 import java.net.URLDecoder
