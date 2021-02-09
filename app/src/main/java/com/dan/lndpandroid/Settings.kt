@@ -2,7 +2,6 @@ package com.dan.lndpandroid
 
 import android.app.Activity
 import android.content.Context
-import java.net.URLDecoder
 import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberProperties
@@ -13,6 +12,11 @@ Settings: all public var fields will be save / restaured
 class Settings( private val activity: Activity) {
 
     companion object {
+        const val SERVICE_TYPE = "_lndp._tcp"
+        const val PORT = 1234
+
+        const val THUMBNAIL_SIZE = 300
+
         const val URL_TIMEOUT = 20000
     }
 

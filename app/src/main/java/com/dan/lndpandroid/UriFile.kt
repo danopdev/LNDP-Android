@@ -34,8 +34,6 @@ class UriFile(
 
         private val DATE_FORMAT = SimpleDateFormat("yyyy:MM:dd hh:mm:ss")
 
-        private const val THUMBNAIL_SIZE = 300
-
         private fun queryTreeUri( context: Context, queryUri: Uri, treeUri: Uri, onlyFirstRecord: Boolean ): ArrayList<UriFile> {
             val result = ArrayList<UriFile>()
             val authority = treeUri.authority ?: return result
@@ -141,7 +139,11 @@ class UriFile(
             return null
 
         try {
-            return DocumentsContract.getDocumentThumbnail(context.contentResolver, uri, Point(THUMBNAIL_SIZE, THUMBNAIL_SIZE), null )
+            return DocumentsContract.getDocumentThumbnail(
+                context.contentResolver,
+                uri,
+                Point(Settings.THUMBNAIL_SIZE, Settings.THUMBNAIL_SIZE),
+                null )
         } catch (e: Exception) {
         }
 
