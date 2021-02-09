@@ -18,6 +18,8 @@ class Settings( private val activity: Activity) {
         const val THUMBNAIL_SIZE = 300
 
         const val URL_TIMEOUT = 20000
+
+        const val WIFI_POOL_STATE_TIMEOUT = 5000L
     }
 
     var serverName = android.os.Build.MODEL ?: ""

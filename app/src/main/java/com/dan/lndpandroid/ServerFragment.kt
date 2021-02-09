@@ -27,22 +27,29 @@ import io.ktor.server.netty.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
-import java.lang.Exception
 import java.net.InetAddress
+import java.net.NetworkInterface
 import java.net.URLDecoder
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.timer
 
-class ServerFragment( val activity: MainActivity ) : Fragment() {
+
+class ServerFragment(val activity: MainActivity) : Fragment() {
     companion object {
         const val INTENT_SELECT_FOLDER = 1
     }
 
-    private val mBinding: ServerFragmentBinding by lazy { ServerFragmentBinding.inflate(layoutInflater) }
+    private val mBinding: ServerFragmentBinding by lazy { ServerFragmentBinding.inflate(
+        layoutInflater
+    ) }
     private val mWifiManager: WifiManager by lazy { activity.getSystemService(AppCompatActivity.WIFI_SERVICE) as WifiManager }
-    private val mConnectivityManager: ConnectivityManager by lazy { activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager }
+    private val mConnectivityManager: ConnectivityManager by lazy { activity.getSystemService(
+        Context.CONNECTIVITY_SERVICE
+    ) as ConnectivityManager }
     private val mNsdManager: NsdManager by lazy { activity.getSystemService(Context.NSD_SERVICE) as NsdManager }
     private var mServer: ApplicationEngine? = null
     private var mWifiConnected = false
+    private var mWifiIpAddress = ""
     private lateinit var mPublicUriFile: UriFile
 
     private val mConnectivityManagerNetworkCallback = object: ConnectivityManager.NetworkCallback() {
@@ -54,7 +61,10 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
             updateWifiState()
         }
 
-        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+        override fun onCapabilitiesChanged(
+            network: Network,
+            networkCapabilities: NetworkCapabilities
+        ) {
             updateWifiState()
         }
 
@@ -79,14 +89,23 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
 
     private fun updateWifiState() {
         var wifiConnected = false
-
-        mConnectivityManager.activeNetwork?.let { network ->
-            mConnectivityManager.getNetworkCapabilities(network)?.let { networkCapabilities ->
-                wifiConnected = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        var wifiIpAddress = ""
+        val enumNetworkInterfaces = NetworkInterface.getNetworkInterfaces()
+        while (enumNetworkInterfaces.hasMoreElements() && !wifiConnected) {
+            val networkInterface = enumNetworkInterfaces.nextElement()
+            if (!networkInterface.isUp || networkInterface.isVirtual || networkInterface.isLoopback || !networkInterface.getName().startsWith("wl")) continue
+            val enumIpAddr = networkInterface.getInetAddresses()
+            while (enumIpAddr.hasMoreElements() && !wifiConnected) {
+                val inetAddress = enumIpAddr.nextElement()
+                if (inetAddress.isSiteLocalAddress) {
+                    wifiIpAddress = inetAddress.hostAddress
+                    wifiConnected = true
+                }
             }
         }
 
         if (wifiConnected != mWifiConnected) {
+            mWifiIpAddress = wifiIpAddress
             mWifiConnected = wifiConnected
             updateServerState()
         }
@@ -141,16 +160,20 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
         updateWifiState()
         updateServerState()
 
+        timer(null, false, Settings.WIFI_POOL_STATE_TIMEOUT, Settings.WIFI_POOL_STATE_TIMEOUT) {
+            updateWifiState()
+        }
+
         return mBinding.root
     }
 
-    private fun getFolderName( uriStr: String ): String {
+    private fun getFolderName(uriStr: String): String {
         @Suppress("DEPRECATION")
         val pathFields = URLDecoder.decode(uriStr).split(':')
         if (pathFields.size <= 1) {
             return activity.settings.publicFolderUri
         } else {
-            return pathFields[pathFields.size-1]
+            return pathFields[pathFields.size - 1]
         }
     }
 
@@ -160,7 +183,9 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
 
     private fun lndpGetUriFile(documentId: String): UriFile {
         if (documentId == "/") return mPublicUriFile
-        return UriFile.fromDocumentId( requireContext(), mPublicUriFile.uri, documentId ) ?: throw Exception("Invalid documentId")
+        return UriFile.fromDocumentId(requireContext(), mPublicUriFile.uri, documentId) ?: throw Exception(
+            "Invalid documentId"
+        )
     }
 
     private fun lndpQueryResponse(files: ArrayList<UriFile>): String {
@@ -185,7 +210,7 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
 
     private fun lndpQueryDocument(documentId: String): String? {
         try {
-            return lndpQueryResponse( arrayListOf(lndpGetUriFile(documentId)) )
+            return lndpQueryResponse(arrayListOf(lndpGetUriFile(documentId)))
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -195,7 +220,7 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
 
     private fun lndpQueryChildDocuments(documentId: String): String? {
         try {
-            return lndpQueryResponse( lndpGetUriFile(documentId).listFiles() )
+            return lndpQueryResponse(lndpGetUriFile(documentId).listFiles())
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -203,19 +228,28 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
         return null
     }
 
-    private suspend fun lndpRespondText(call: ApplicationCall, output: String?, contentType: ContentType) {
+    private suspend fun lndpRespondText(
+        call: ApplicationCall,
+        output: String?,
+        contentType: ContentType
+    ) {
         if (null == output) {
             call.respondText("", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
         } else {
-            call.respondText( output, contentType)
+            call.respondText(output, contentType)
         }
     }
 
-    private suspend fun lndpRespondBinary(call: ApplicationCall, output: ByteArray?, outputSize: Int, contentType: ContentType) {
+    private suspend fun lndpRespondBinary(
+        call: ApplicationCall,
+        output: ByteArray?,
+        outputSize: Int,
+        contentType: ContentType
+    ) {
         if (null == output) {
             call.respondText("", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
         } else {
-            call.respondOutputStream(contentType, HttpStatusCode.OK ) {
+            call.respondOutputStream(contentType, HttpStatusCode.OK) {
                 write(output, 0, outputSize)
             }
         }
@@ -223,10 +257,8 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
 
     private fun startServer() {
         @Suppress("DEPRECATION")
-        val ip = Formatter.formatIpAddress(mWifiManager.getConnectionInfo().ipAddress)
-
         try {
-            val server = embeddedServer(Netty, port = Settings.PORT, host = ip) {
+            val server = embeddedServer(Netty, port = Settings.PORT, host = mWifiIpAddress) {
                 routing {
                     get("/lndp/queryDocument") {
                         var output: String? = null
@@ -265,11 +297,16 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
                                     inputStream.close()
                                 }
                             }
-                        } catch(e: Exception) {
+                        } catch (e: Exception) {
                             e.printStackTrace()
                         }
 
-                        lndpRespondBinary(call, output, outputSize, ContentType.Application.OctetStream)
+                        lndpRespondBinary(
+                            call,
+                            output,
+                            outputSize,
+                            ContentType.Application.OctetStream
+                        )
                     }
 
                     get("/lndp/documentReadThumb") {
@@ -280,12 +317,12 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
                             call.request.queryParameters.get("path")?.let{ documentId ->
                                 lndpGetUriFile(documentId).getThumbnail()?.let{ bitmap ->
                                     val bos = ByteArrayOutputStream()
-                                    bitmap.compress(Bitmap.CompressFormat.JPEG, 70 , bos)
+                                    bitmap.compress(Bitmap.CompressFormat.JPEG, 70, bos)
                                     output = bos.toByteArray()
                                     outputSize = output?.size ?: 0
                                 }
                             }
-                        } catch(e: Exception) {
+                        } catch (e: Exception) {
                             e.printStackTrace()
                         }
 
@@ -305,16 +342,20 @@ class ServerFragment( val activity: MainActivity ) : Fragment() {
             return
         }
 
-        mBinding.txtUrl.text = "${ip}:${Settings.PORT}"
+        mBinding.txtUrl.text = "${mWifiIpAddress}:${Settings.PORT}"
 
         val serviceInfo = NsdServiceInfo()
         serviceInfo.serviceName = mBinding.txtName.text.toString()
         serviceInfo.serviceType = Settings.SERVICE_TYPE
         serviceInfo.port = Settings.PORT
-        serviceInfo.host = InetAddress.getByName(ip)
+        serviceInfo.host = InetAddress.getByName(mWifiIpAddress)
 
         try {
-            mNsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, mNsdManagerRegistrationListener)
+            mNsdManager.registerService(
+                serviceInfo,
+                NsdManager.PROTOCOL_DNS_SD,
+                mNsdManagerRegistrationListener
+            )
         } catch (e: Exception) {
             e.printStackTrace()
         }
