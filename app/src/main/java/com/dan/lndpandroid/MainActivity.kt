@@ -11,10 +11,7 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
-import android.net.wifi.WifiManager
 import android.os.Bundle
-import android.text.format.Formatter
-import android.util.Size
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -29,11 +26,13 @@ import io.ktor.server.netty.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
-import java.io.OutputStream
-import java.lang.Exception
 import java.net.InetAddress
+import java.net.NetworkInterface
 import java.net.URLDecoder
+import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
+import kotlin.concurrent.timer
 import kotlin.system.exitProcess
 
 
@@ -56,11 +55,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
-    private val mWifiManager: WifiManager by lazy { getSystemService(WIFI_SERVICE) as WifiManager }
     private val mConnectivityManager: ConnectivityManager by lazy { getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager }
     private val mNsdManager: NsdManager by lazy { getSystemService(Context.NSD_SERVICE) as NsdManager }
     private var mServer: ApplicationEngine? = null
     private var mWifiConnected = false
+    private var mWifiIP = ""
     private val mSettings: Settings by lazy { Settings(this) }
     private lateinit var mPublicUriFile: UriFile
 
@@ -98,17 +97,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateWifiState() {
-        var wifiConnected = false
+        runOnUiThread() {
+            var wifiConnected = false
+            var wifiIP = ""
 
-        mConnectivityManager.activeNetwork?.let { network ->
-            mConnectivityManager.getNetworkCapabilities(network)?.let { networkCapabilities ->
-                wifiConnected = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+            val enumNetworkInterfaces = NetworkInterface.getNetworkInterfaces()
+            while (enumNetworkInterfaces.hasMoreElements() && !wifiConnected) {
+                val networkInterface: NetworkInterface = enumNetworkInterfaces.nextElement()
+                if (networkInterface.isVirtual || networkInterface.isLoopback || !networkInterface.isUp ||
+                    !(networkInterface.name.startsWith("wl") || networkInterface.name.startsWith("ap"))) continue
+
+                val enumInetAddress: Enumeration<InetAddress> = networkInterface.getInetAddresses()
+                while (enumInetAddress.hasMoreElements() && !wifiConnected) {
+                    val inetAddress: InetAddress = enumInetAddress.nextElement()
+                    if (inetAddress.isSiteLocalAddress) {
+                        wifiConnected = true
+                        wifiIP = inetAddress.hostAddress
+                    }
+                }
             }
-        }
 
-        if (wifiConnected != mWifiConnected) {
-            mWifiConnected = wifiConnected
-            updateServerState()
+            if (wifiConnected != mWifiConnected) {
+                mWifiConnected = wifiConnected
+                mWifiIP = wifiIP
+                updateServerState()
+            }
         }
     }
 
@@ -171,6 +184,10 @@ class MainActivity : AppCompatActivity() {
         mConnectivityManager.registerDefaultNetworkCallback(mConnectivityManagerNetworkCallback)
         updateWifiState()
         updateServerState()
+
+        timer(null, false, 5000, 5000) {
+            updateWifiState()
+        }
     }
 
     private fun askPermissions(): Boolean {
@@ -222,13 +239,13 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun getFolderName( uriStr: String ): String {
+    private fun getFolderName(uriStr: String): String {
         @Suppress("DEPRECATION")
         val pathFields = URLDecoder.decode(uriStr).split(':')
         if (pathFields.size <= 1) {
             return mSettings.publicFolderUri
         } else {
-            return pathFields[pathFields.size-1]
+            return pathFields[pathFields.size - 1]
         }
     }
 
@@ -263,7 +280,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun lndpQueryDocument(documentId: String): String? {
         try {
-            return lndpQueryResponse( arrayListOf(lndpGetUriFile(documentId)) )
+            return lndpQueryResponse(arrayListOf(lndpGetUriFile(documentId)))
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -273,7 +290,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun lndpQueryChildDocuments(documentId: String): String? {
         try {
-            return lndpQueryResponse( lndpGetUriFile(documentId).listFiles() )
+            return lndpQueryResponse(lndpGetUriFile(documentId).listFiles())
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -293,7 +310,7 @@ class MainActivity : AppCompatActivity() {
         if (null == output) {
             call.respondText("", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
         } else {
-            call.respondOutputStream(contentType, HttpStatusCode.OK ) {
+            call.respondOutputStream(contentType, HttpStatusCode.OK) {
                 write(output, 0, outputSize)
             }
         }
@@ -301,10 +318,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun startServer() {
         @Suppress("DEPRECATION")
-        val ip = Formatter.formatIpAddress(mWifiManager.getConnectionInfo().ipAddress)
-
         try {
-            val server = embeddedServer(Netty, port = PORT, host = ip) {
+            val server = embeddedServer(Netty, port = PORT, host = mWifiIP) {
                 routing {
                     get("/lndp/queryDocument") {
                         var output: String? = null
@@ -343,7 +358,7 @@ class MainActivity : AppCompatActivity() {
                                     inputStream.close()
                                 }
                             }
-                        } catch(e: Exception) {
+                        } catch (e: Exception) {
                             e.printStackTrace()
                         }
 
@@ -358,12 +373,12 @@ class MainActivity : AppCompatActivity() {
                             call.request.queryParameters.get("path")?.let{ documentId ->
                                 lndpGetUriFile(documentId).getThumbnail()?.let{ bitmap ->
                                     val bos = ByteArrayOutputStream()
-                                    bitmap.compress(Bitmap.CompressFormat.JPEG, 70 , bos)
+                                    bitmap.compress(Bitmap.CompressFormat.JPEG, 70, bos)
                                     output = bos.toByteArray()
                                     outputSize = output?.size ?: 0
                                 }
                             }
-                       } catch(e: Exception) {
+                       } catch (e: Exception) {
                             e.printStackTrace()
                         }
 
@@ -383,13 +398,13 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        mBinding.txtUrl.text = "http://${ip}:${PORT}/"
+        mBinding.txtUrl.text = "http://${mWifiIP}:${PORT}/"
 
         val serviceInfo = NsdServiceInfo()
         serviceInfo.serviceName = mBinding.txtName.text.toString()
         serviceInfo.serviceType = SERVICE_TYPE
         serviceInfo.port = PORT
-        serviceInfo.host = InetAddress.getByName(ip)
+        serviceInfo.host = InetAddress.getByName(mWifiIP)
 
         try {
             mNsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, mNsdManagerRegistrationListener)
