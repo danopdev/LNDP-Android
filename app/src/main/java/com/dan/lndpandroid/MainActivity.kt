@@ -35,18 +35,6 @@ class MainActivity : AppCompatActivity() {
 
     private val mServerFragment: ServerFragment by lazy { ServerFragment(this) }
 
-    private val mPagerAdapter = object: FragmentPagerAdapter(supportFragmentManager, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
-        override fun getItem(position: Int): Fragment {
-            when (position) {
-                else -> return mServerFragment
-            }
-        }
-
-        override fun getPageTitle(position: Int): CharSequence? = TAB_TITLES[position]
-
-        override fun getCount(): Int = TAB_TITLES.size
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (!askPermissions()) onPermissionsAllowed()
@@ -59,8 +47,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onPermissionsAllowed() {
-        mBinding.viewPager.adapter = mPagerAdapter
+        val pagerAdapter = object : FragmentPagerAdapter(supportFragmentManager, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
+            override fun getItem(position: Int): Fragment {
+                when (position) {
+                    else -> return mServerFragment
+                }
+            }
+
+            override fun getPageTitle(position: Int): CharSequence? = TAB_TITLES[position]
+
+            override fun getCount(): Int = TAB_TITLES.size
+        }
+
+        mBinding.viewPager.adapter = pagerAdapter
         mBinding.tabs.setupWithViewPager( mBinding.viewPager )
+
+        setContentView(mBinding.root)
     }
 
     private fun askPermissions(): Boolean {
