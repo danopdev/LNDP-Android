@@ -39,13 +39,9 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
         const val INTENT_SELECT_FOLDER = 1
     }
 
-    private val mBinding: ServerFragmentBinding by lazy { ServerFragmentBinding.inflate(
-        layoutInflater
-    ) }
+    private val mBinding: ServerFragmentBinding by lazy { ServerFragmentBinding.inflate(layoutInflater) }
     private val mWifiManager: WifiManager by lazy { activity.getSystemService(AppCompatActivity.WIFI_SERVICE) as WifiManager }
-    private val mConnectivityManager: ConnectivityManager by lazy { activity.getSystemService(
-        Context.CONNECTIVITY_SERVICE
-    ) as ConnectivityManager }
+    private val mConnectivityManager: ConnectivityManager by lazy { activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager }
     private val mNsdManager: NsdManager by lazy { activity.getSystemService(Context.NSD_SERVICE) as NsdManager }
     private var mServer: ApplicationEngine? = null
     private var mWifiConnected = false
@@ -61,10 +57,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
             updateWifiState()
         }
 
-        override fun onCapabilitiesChanged(
-            network: Network,
-            networkCapabilities: NetworkCapabilities
-        ) {
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             updateWifiState()
         }
 
@@ -231,11 +224,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
         return null
     }
 
-    private suspend fun lndpRespondText(
-        call: ApplicationCall,
-        output: String?,
-        contentType: ContentType
-    ) {
+    private suspend fun lndpRespondText(call: ApplicationCall, output: String?, contentType: ContentType) {
         if (null == output) {
             call.respondText("", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
         } else {
@@ -243,12 +232,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
         }
     }
 
-    private suspend fun lndpRespondBinary(
-        call: ApplicationCall,
-        output: ByteArray?,
-        outputSize: Int,
-        contentType: ContentType
-    ) {
+    private suspend fun lndpRespondBinary(call: ApplicationCall, output: ByteArray?, outputSize: Int, contentType: ContentType) {
         if (null == output) {
             call.respondText("", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
         } else {
@@ -304,12 +288,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
                             e.printStackTrace()
                         }
 
-                        lndpRespondBinary(
-                            call,
-                            output,
-                            outputSize,
-                            ContentType.Application.OctetStream
-                        )
+                        lndpRespondBinary(call, output, outputSize, ContentType.Application.OctetStream)
                     }
 
                     get("/lndp/documentReadThumb") {
