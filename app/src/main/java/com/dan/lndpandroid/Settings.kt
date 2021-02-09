@@ -15,6 +15,8 @@ class Settings( private val activity: Activity) {
         const val SERVICE_TYPE = "_lndp._tcp"
         const val PORT = 1234
 
+        const val BUFFER_SIZE = 500 * 1024
+
         const val THUMBNAIL_SIZE = 300
 
         const val URL_TIMEOUT = 20000
@@ -23,7 +25,10 @@ class Settings( private val activity: Activity) {
     }
 
     var serverName = android.os.Build.MODEL ?: ""
-    var publicFolderUri: String = ""
+    var publicFolderUri = ""
+
+    var leftSourceUri = ""
+    var rightSourceUri = ""
 
     init {
         loadProperties()

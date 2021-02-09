@@ -24,16 +24,17 @@ class MainActivity : AppCompatActivity() {
 
         const val REQUEST_PERMISSIONS = 1
 
-        //const val TAB_FILES = 0
-        const val TAB_SERVER = 0
+        const val TAB_FILES = 0
+        const val TAB_SERVER = 1
 
-        val TAB_TITLES = arrayOf( /*"Files",*/ "Server" )
+        val TAB_TITLES = arrayOf( "File Copy", "Server" )
     }
 
     private val mBinding: ActivityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
-    val settings: Settings by lazy { Settings(this) }
-
     private val mServerFragment: ServerFragment by lazy { ServerFragment(this) }
+    private val mFileCopyFragment: FileCopyFragment by lazy { FileCopyFragment(this) }
+
+    val settings: Settings by lazy { Settings(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,11 +49,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun onPermissionsAllowed() {
         val pagerAdapter = object : FragmentPagerAdapter(supportFragmentManager, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
-            override fun getItem(position: Int): Fragment {
+            override fun getItem(position: Int): Fragment =
                 when (position) {
-                    else -> return mServerFragment
+                    TAB_FILES -> mFileCopyFragment
+                    else -> mServerFragment
                 }
-            }
 
             override fun getPageTitle(position: Int): CharSequence? = TAB_TITLES[position]
 
