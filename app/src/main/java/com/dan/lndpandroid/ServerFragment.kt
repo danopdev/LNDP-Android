@@ -88,26 +88,29 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
     }
 
     private fun updateWifiState() {
-        var wifiConnected = false
-        var wifiIpAddress = ""
-        val enumNetworkInterfaces = NetworkInterface.getNetworkInterfaces()
-        while (enumNetworkInterfaces.hasMoreElements() && !wifiConnected) {
-            val networkInterface = enumNetworkInterfaces.nextElement()
-            if (!networkInterface.isUp || networkInterface.isVirtual || networkInterface.isLoopback || !networkInterface.getName().startsWith("wl")) continue
-            val enumIpAddr = networkInterface.getInetAddresses()
-            while (enumIpAddr.hasMoreElements() && !wifiConnected) {
-                val inetAddress = enumIpAddr.nextElement()
-                if (inetAddress.isSiteLocalAddress) {
-                    wifiIpAddress = inetAddress.hostAddress
-                    wifiConnected = true
+        activity.runOnUiThread {
+            var wifiConnected = false
+            var wifiIpAddress = ""
+            val enumNetworkInterfaces = NetworkInterface.getNetworkInterfaces()
+            while (enumNetworkInterfaces.hasMoreElements() && !wifiConnected) {
+                val networkInterface = enumNetworkInterfaces.nextElement()
+                if (!networkInterface.isUp || networkInterface.isVirtual || networkInterface.isLoopback || !networkInterface.getName().startsWith("wl")) continue
+                val enumIpAddr = networkInterface.getInetAddresses()
+                while (enumIpAddr.hasMoreElements() && !wifiConnected) {
+                    val inetAddress = enumIpAddr.nextElement()
+                    if (inetAddress.isSiteLocalAddress) {
+                        wifiIpAddress = inetAddress.hostAddress
+                        wifiConnected = true
+                    }
                 }
             }
-        }
 
-        if (wifiConnected != mWifiConnected) {
-            mWifiIpAddress = wifiIpAddress
-            mWifiConnected = wifiConnected
-            updateServerState()
+            if (wifiConnected != mWifiConnected) {
+                mWifiIpAddress = wifiIpAddress
+                mWifiConnected = wifiConnected
+                mBinding.txtWifi.text = if (wifiConnected) "WiFi: ON" else "WiFi: OFF"
+                updateServerState()
+            }
         }
     }
 
@@ -118,7 +121,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
             }
         }
 
-        mBinding.btnStartServer.isEnabled = null == mServer && mBinding.txtName.text.isNotEmpty() && activity.settings.publicFolderUri.isNotEmpty()
+        mBinding.btnStartServer.isEnabled = mWifiConnected && null == mServer && mBinding.txtName.text.isNotEmpty() && activity.settings.publicFolderUri.isNotEmpty()
         mBinding.btnStopServer.isEnabled = null != mServer
     }
 
