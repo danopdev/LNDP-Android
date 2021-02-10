@@ -15,7 +15,8 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.LNDPAndroid">
 
-        <activity android:name=".MainActivity">
+        <activity android:name=".MainActivity"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
