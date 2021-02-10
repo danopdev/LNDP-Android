@@ -1,7 +1,5 @@
 package com.dan.lndpandroid;
 
-import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

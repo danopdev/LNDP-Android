@@ -5,8 +5,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
-import com.dan.lndpandroid.FileItem
-import com.dan.lndpandroid.MainActivity
 import com.dan.lndpandroid.databinding.FileItemBinding
 import kotlin.collections.ArrayList
 
