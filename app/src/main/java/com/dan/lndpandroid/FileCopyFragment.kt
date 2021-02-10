@@ -71,8 +71,9 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
                 path = file.name
             } else {
                 val pathFields = lastPathSegment.split(':')
-                if (pathFields.size <= 1) path = lastPathSegment
-                else {
+                if (pathFields.size <= 1) {
+                    path = lastPathSegment
+                } else {
                     authorityItem = pathFields[0]
                     path = pathFields[pathFields.size-1]
                     if (!path.startsWith('/')) path = "/" + path
@@ -115,28 +116,32 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
             MENU_ITEM_UNSELECT_ALL -> unselectAll()
 
             MENU_ITEM_UNSELECT_ALL_BEFORE -> {
-                for (index in 0..item.itemId)
+                for (index in 0..item.itemId) {
                     setItemState(index, false)
+                }
                 updateCopyButton()
             }
 
             MENU_ITEM_UNSELECT_ALL_AFTER -> {
-                for (index in item.itemId until mListAdapter.itemCount)
+                for (index in item.itemId until mListAdapter.itemCount) {
                     setItemState(index, false)
+                }
                 updateCopyButton()
             }
 
             MENU_ITEM_SELECT_ALL_FILES -> {
-                for (index in mListAdapter.items.indices)
+                for (index in mListAdapter.items.indices) {
                     setItemState(index, true)
+                }
                 updateCopyButton()
             }
 
             MENU_ITEM_SELECT_ALL_IMAGES -> {
                 for (index in mListAdapter.items.indices) {
                     val fileItem = mListAdapter.items[index]
-                    if (fileItem.file.mimeType.startsWith("image/") && !isRaw(fileItem.file.name))
+                    if (fileItem.file.mimeType.startsWith("image/") && !isRaw(fileItem.file.name)) {
                         setItemState(index, true)
+                    }
                 }
                 updateCopyButton()
             }
@@ -144,8 +149,9 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
             MENU_ITEM_SELECT_ALL_RAW -> {
                 for (index in mListAdapter.items.indices) {
                     val fileItem = mListAdapter.items[index]
-                    if (isRaw(fileItem.file.name))
+                    if (isRaw(fileItem.file.name)) {
                         setItemState(index, true)
+                    }
                 }
                 updateCopyButton()
             }
@@ -207,8 +213,11 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
                 item.isSelected = !item.isSelected
                 mListAdapter.notifyItemChanged(index)
 
-                if (item.isSelected) mSelectedSize++
-                else mSelectedSize--
+                if (item.isSelected) {
+                    mSelectedSize++
+                } else {
+                    mSelectedSize--
+                }
 
                 updateCopyButton()
             }
@@ -268,8 +277,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
             txtPath.text = sourceAndPath.second
             txtPath.alpha = 1f
             txtPath.setTypeface(null, Typeface.NORMAL)
-            if (isLeft)
-                listFolder()
+            if (isLeft) listFolder()
         }
     }
 
