@@ -300,7 +300,11 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
 
     private fun listFolder() {
         val leftFolder = mLeftFolder
-        if( null == leftFolder ) return
+        if( null == leftFolder ) {
+            mBinding.swipeRefresh.isRefreshing = false
+            return
+        }
+
         mSelectedSize = 0
         updateCopyButton()
         mBinding.swipeRefresh.isRefreshing = true
