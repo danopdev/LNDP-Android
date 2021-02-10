@@ -23,7 +23,6 @@ import java.io.*
 class FileCopyFragment(val activity: MainActivity) : Fragment() {
 
     companion object {
-        const val REQUEST_PERMISSIONS = 1
         const val INTENT_SELECT_FOLDER = 2
 
         const val MENU_COPY = 1
@@ -58,9 +57,13 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
             val authority = file.authority
             val authorityFields = authority.split('.')
             val authorityShort =
-                if (authorityFields.size <= 1) authority
-                else if ("documents".equals(authorityFields[authorityFields.size-1])) authorityFields[authorityFields.size-2]
-                else authorityFields[authorityFields.size-2] + "." + authorityFields[authorityFields.size-1]
+                if (authorityFields.size <= 1) {
+                    authority
+                } else if ("documents".equals(authorityFields[authorityFields.size-1])) {
+                    authorityFields[authorityFields.size-2]
+                } else {
+                    authorityFields[authorityFields.size-2] + "." + authorityFields[authorityFields.size-1]
+                }
 
             var authorityItem = ""
             var path: String
@@ -92,7 +95,6 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
     private var mUpdateId = 0
     private var mSelectedSize = 0
     private var mOnSelectFolder: ((Uri)->Unit)? = null
-    private val mNotificationManager: NotificationManager by lazy { activity.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
 
     init {
         BusyDialog.create(activity)
