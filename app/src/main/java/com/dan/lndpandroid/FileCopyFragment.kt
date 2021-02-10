@@ -1,4 +1,4 @@
-package com.dan.lndpandroid;
+package com.dan.lndpandroid
 
 import android.content.Intent
 import android.graphics.Bitmap
