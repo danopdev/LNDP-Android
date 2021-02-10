@@ -19,7 +19,8 @@
                 android:id="@+id/btnCopy"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Copy >" />
+                android:text="Copy >"
+                android:textAllCaps="false" />
 
             <LinearLayout
                 android:id="@+id/layoutRight"
