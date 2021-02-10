@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -17,6 +18,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.*
+import java.util.*
+import kotlin.collections.ArrayList
 
 class FileCopyFragment(val activity: MainActivity) : Fragment() {
 
@@ -43,7 +46,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
         var defaultFolderBitmap: Bitmap? = null
 
         fun isRaw(name: String): Boolean {
-            val nameUpper = name.toUpperCase()
+            val nameUpper = name.toUpperCase(Locale.getDefault())
             for (ext in RAW_EXTENSIONS) {
                 if (nameUpper.endsWith(ext))
                     return true
@@ -185,10 +188,8 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         super.onCreate(savedInstanceState)
 
-        @Suppress("DEPRECATION")
-        if (null == defaultFileBitmap) defaultFileBitmap = resources.getDrawable(R.mipmap.ic_file).toBitmap()
-        @Suppress("DEPRECATION")
-        if (null == defaultFolderBitmap) defaultFolderBitmap = resources.getDrawable(R.mipmap.ic_folder).toBitmap()
+        if (null == defaultFileBitmap) defaultFileBitmap = AppCompatResources.getDrawable(requireContext(), R.mipmap.ic_file)?.toBitmap()
+        if (null == defaultFolderBitmap) defaultFolderBitmap = AppCompatResources.getDrawable(requireContext(), R.mipmap.ic_folder)?.toBitmap()
 
         mBinding.listView.adapter = mListAdapter
         mBinding.listView.layoutManager = LinearLayoutManager(context)
@@ -385,8 +386,8 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
 
             if (bitmap.width < BITAMP_SMALL_SIZE && bitmap.height < BITAMP_SMALL_SIZE) return null
 
-            var newWidth: Int
-            var newHeight: Int
+            val newWidth: Int
+            val newHeight: Int
 
             if (bitmap.width < bitmap.height) {
                 newHeight = BITAMP_SMALL_SIZE
@@ -423,13 +424,13 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
 
         inputStream = smallBitmap.second
         val dotIndex = name.lastIndexOf('.')
-        var basename: String
+        val basename: String
         var ext: String
 
         if (dotIndex >= 0) {
             basename = name.substring(0, dotIndex)
             ext = name.substring(dotIndex)
-            val extUpper = ext.toUpperCase()
+            val extUpper = ext.toUpperCase(Locale.getDefault())
             if (!extUpper.equals(".JPG") && extUpper.equals(".JPEG"))
                 ext = ".jpg"
         } else {
@@ -445,7 +446,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
     private fun copyFileAsync( txtPrefix: String, sourceUri: UriFile, destFolder: UriFile, copyMode: Int, buffer: ByteArray, existingUri: UriFile? ) {
         var inputStream: InputStream? = null
         var outputStream: OutputStream? = null
-        var size: Long
+        val size: Long
         var offset: Long
         var readSize: Int
         val small = MENU_COPY_SMALL == copyMode
@@ -537,7 +538,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
     }
 
     private fun copyAsync(destFolder: UriFile, copyMode: Int) {
-        var buffer = ByteArray(Settings.BUFFER_SIZE)
+        val buffer = ByteArray(Settings.BUFFER_SIZE)
         val allItems = mListAdapter.items
         val selectedItems = ArrayList<UriFile>()
 
