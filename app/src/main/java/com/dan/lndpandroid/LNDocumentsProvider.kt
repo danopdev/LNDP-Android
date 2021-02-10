@@ -38,7 +38,7 @@ class LNDocumentsProvider : DocumentsProvider() {
 
         const val BUFFER_SIZE = 1024*500
 
-        private val DEFAULT_ROOT_PROJECTION = arrayOf<String>(
+        private val DEFAULT_ROOT_PROJECTION = arrayOf(
             Root.COLUMN_ROOT_ID,
             Root.COLUMN_FLAGS,
             Root.COLUMN_ICON,
@@ -46,7 +46,7 @@ class LNDocumentsProvider : DocumentsProvider() {
             Root.COLUMN_DOCUMENT_ID
         )
 
-        private val DEFAULT_DOCUMENT_PROJECTION = arrayOf<String>(
+        private val DEFAULT_DOCUMENT_PROJECTION = arrayOf(
             Document.COLUMN_DOCUMENT_ID,
             Document.COLUMN_MIME_TYPE,
             Document.COLUMN_DISPLAY_NAME,
