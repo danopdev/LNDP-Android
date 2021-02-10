@@ -354,7 +354,7 @@ class LNDocumentsProvider : DocumentsProvider() {
                     val result = readUrlConnection(getUrlConnection(getGetDocumentUrl(documentId, "documentRead", "&offset=${offset}&size=${BUFFER_SIZE}"))) ?: break
 
                     if (HttpURLConnection.HTTP_OK != result.first) break
-                    if (result.second.size <= 0) break
+                    if (result.second.isEmpty()) break
 
                     fos.write(result.second)
                     offset += result.second.size
