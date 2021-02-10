@@ -14,12 +14,12 @@
             android:id="@+id/tabs"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="?attr/colorPrimary"
+            android:background="@color/purple_200"
             app:tabIndicatorColor="#FFFFFF"
             app:tabMode="scrollable"
             app:tabSelectedTextColor="@color/white"
             app:tabTextAppearance="@style/TextAppearance.AppCompat.Medium"
-            app:tabTextColor="@color/purple_200" />
+            app:tabTextColor="@color/material_on_primary_disabled" />
 
         <androidx.viewpager.widget.ViewPager
             android:id="@+id/view_pager"
