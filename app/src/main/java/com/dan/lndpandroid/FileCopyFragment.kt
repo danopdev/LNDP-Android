@@ -501,7 +501,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
     data class CopyFolderInfo( val txtPrefix: String, val srcFolder: UriFile, val srcItems: ArrayList<UriFile>?, val destFolder: UriFile )
 
     private fun copyItemsAsync( copyInfoRoot: CopyFolderInfo, copyMode: Int, buffer: ByteArray ) {
-        val copyInfoMQ = mutableListOf<CopyFolderInfo>(copyInfoRoot)
+        val copyInfoMQ = mutableListOf(copyInfoRoot)
 
         while (copyInfoMQ.size > 0) {
             val copyInfo = copyInfoMQ.removeAt(0)
