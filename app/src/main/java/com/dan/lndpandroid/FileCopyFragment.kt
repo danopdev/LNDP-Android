@@ -165,9 +165,9 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
 
     private fun onCopyToContextMenu(contextMenu: ContextMenu?) {
         if (null == contextMenu) return
-        contextMenu.add( 0, 0, MENU_COPY, "Copy" )
-        contextMenu.add( 0, 0, MENU_COPY_SMALL, "Copy Small" )
-        contextMenu.add( 0, 0, MENU_UPDATE, "Update" )
+        contextMenu.add( 0, 0, MENU_COPY, "Copy To" )
+        contextMenu.add( 0, 0, MENU_COPY_SMALL, "Copy Small To" )
+        contextMenu.add( 0, 0, MENU_UPDATE, "Update To" )
     }
 
     fun selectFolder(callback: (Uri) -> Unit) {
