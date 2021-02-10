@@ -18,14 +18,11 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.dan.lndpandroid.databinding.ServerFragmentBinding
-import io.ktor.application.*
-import io.ktor.http.*
-import io.ktor.response.*
-import io.ktor.routing.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
+import fi.iki.elonen.NanoHTTPD
+import fi.iki.elonen.NanoHTTPD.newFixedLengthResponse
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.net.InetAddress
 import java.net.NetworkInterface
@@ -43,7 +40,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
     private val mWifiManager: WifiManager by lazy { activity.getSystemService(AppCompatActivity.WIFI_SERVICE) as WifiManager }
     private val mConnectivityManager: ConnectivityManager by lazy { activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager }
     private val mNsdManager: NsdManager by lazy { activity.getSystemService(Context.NSD_SERVICE) as NsdManager }
-    private var mServer: ApplicationEngine? = null
+    private var mServer: NanoHTTPD? = null
     private var mWifiConnected = false
     private var mWifiIpAddress = ""
     private lateinit var mPublicUriFile: UriFile
@@ -192,6 +189,16 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
         }
     }
 
+    private fun nanoHttpdGetParam(session: NanoHTTPD.IHTTPSession, name: String, defaultValue: String? = null): String {
+        val list = session.parameters[name]
+        if (null == list || list.isEmpty()) {
+            if (null != defaultValue) return defaultValue
+            throw Exception("ParamNotFound")
+        }
+
+        return list[0]
+    }
+
     private fun lndpGetDocuemntId(uriFile: UriFile): String {
         return uriFile.documentId
     }
@@ -223,9 +230,12 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
         return jsonArray.toString()
     }
 
-    private fun lndpQueryDocument(documentId: String): String? {
+    private fun lndpQueryDocument(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response? {
         try {
-            return lndpQueryResponse(arrayListOf(lndpGetUriFile(documentId)))
+            return newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK,
+                "application/json",
+                lndpQueryResponse(arrayListOf(lndpGetUriFile(nanoHttpdGetParam(session, "path")))) )
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -233,9 +243,12 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
         return null
     }
 
-    private fun lndpQueryChildDocuments(documentId: String): String? {
+    private fun lndpQueryChildDocuments(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response? {
         try {
-            return lndpQueryResponse(lndpGetUriFile(documentId).listFiles())
+            return newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK,
+                "application/json",
+                lndpQueryResponse(lndpGetUriFile(nanoHttpdGetParam(session, "path")).listFiles()))
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -243,92 +256,72 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
         return null
     }
 
-    private suspend fun lndpRespondText(call: ApplicationCall, output: String?, contentType: ContentType) {
-        if (null == output) {
-            call.respondText("", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
-        } else {
-            call.respondText(output, contentType)
-        }
-    }
+    private fun lndpDocumentRead(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response? {
+        try {
+            val documentId = nanoHttpdGetParam(session, "path")
+            val size = nanoHttpdGetParam(session, "size").toInt()
+            val offset = nanoHttpdGetParam(session, "offset", "0").toInt()
 
-    private suspend fun lndpRespondBinary(call: ApplicationCall, output: ByteArray?, outputSize: Int, contentType: ContentType) {
-        if (null == output) {
-            call.respondText("", ContentType.Text.Plain, HttpStatusCode.InternalServerError)
-        } else {
-            call.respondOutputStream(contentType, HttpStatusCode.OK) {
-                write(output, 0, outputSize)
+            if (offset >= 0 && size > 0) {
+                val uriFile = lndpGetUriFile(documentId)
+                activity.contentResolver.openInputStream(uriFile.uri)?.let{ inputStream ->
+                    if (offset > 0) inputStream.skip(offset.toLong())
+                    val buffer = ByteArray(size)
+                    val outputSize = inputStream.read(buffer)
+                    inputStream.close()
+
+                    if (outputSize > 0) {
+                        return newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.OK,
+                            "application/octet-stream",
+                            ByteArrayInputStream(buffer, 0, outputSize),
+                            outputSize.toLong() )
+                    }
+                }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
+
+        return null
+    }
+
+    private fun lndpDocumentReadThumb(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response? {
+        try {
+            lndpGetUriFile(nanoHttpdGetParam(session, "path")).getThumbnail()?.let{ bitmap ->
+                val bos = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 70, bos)
+                val buffer = bos.toByteArray()
+                return newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.OK,
+                    "image/jpeg",
+                    ByteArrayInputStream(buffer),
+                    buffer.size.toLong() )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return null
     }
 
     private fun startServer() {
         @Suppress("DEPRECATION")
         try {
-            val server = embeddedServer(Netty, port = Settings.PORT, host = mWifiIpAddress) {
-                routing {
-                    get("/lndp/queryDocument") {
-                        var output: String? = null
-                        call.request.queryParameters.get("path")?.let { documentId ->
-                            output = lndpQueryDocument(documentId)
+            val server = object: NanoHTTPD(mWifiIpAddress, Settings.PORT) {
+                override fun serve(session: IHTTPSession?): Response {
+                    var response: Response? = null
+
+                    if (null != session) {
+                        when (session.uri) {
+                            "/lndp/queryDocument" -> response = lndpQueryDocument(session)
+                            "/lndp/queryChildDocuments" -> response = lndpQueryChildDocuments(session)
+                            "/lndp/documentRead" -> response = lndpDocumentRead(session)
+                            "/lndp/documentReadThumb" -> response = lndpDocumentReadThumb(session)
                         }
-                        lndpRespondText(call, output, ContentType.Application.Json)
                     }
 
-                    get("/lndp/queryChildDocuments") {
-                        var output: String? = null
-                        call.request.queryParameters.get("path")?.let { documentId ->
-                            output = lndpQueryChildDocuments(documentId)
-                        }
-                        lndpRespondText(call, output, ContentType.Application.Json)
-                    }
-
-                    get("/lndp/documentRead") {
-                        var output: ByteArray? = null
-                        var outputSize = 0
-
-                        try {
-                            val documentId = call.request.queryParameters.get("path")
-                            val offsetStr = call.request.queryParameters.get("offset") ?: "0"
-                            val offset = offsetStr.toInt()
-                            val sizeStr = call.request.queryParameters.get("size") ?: "0"
-                            val size = sizeStr.toInt()
-
-                            if (null != documentId && offset >= 0 && size > 0) {
-                                val uriFile = lndpGetUriFile(documentId)
-                                activity.contentResolver.openInputStream(uriFile.uri)?.let{ inputStream ->
-                                    if (offset > 0) inputStream.skip(offset.toLong())
-                                    val buffer = ByteArray(size)
-                                    outputSize = inputStream.read(buffer)
-                                    if (outputSize > 0) output = buffer
-                                    inputStream.close()
-                                }
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-
-                        lndpRespondBinary(call, output, outputSize, ContentType.Application.OctetStream)
-                    }
-
-                    get("/lndp/documentReadThumb") {
-                        var output: ByteArray? = null
-                        var outputSize = 0
-
-                        try {
-                            call.request.queryParameters.get("path")?.let{ documentId ->
-                                lndpGetUriFile(documentId).getThumbnail()?.let{ bitmap ->
-                                    val bos = ByteArrayOutputStream()
-                                    bitmap.compress(Bitmap.CompressFormat.JPEG, 70, bos)
-                                    output = bos.toByteArray()
-                                    outputSize = output?.size ?: 0
-                                }
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-
-                        lndpRespondBinary(call, output, outputSize, ContentType.Image.JPEG)
-                    }
+                    return response ?: newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/pain", "")
                 }
             }
 
@@ -376,7 +369,8 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
 
         mBinding.txtUrl.text = ""
         try {
-            mServer?.stop(250L, 250L, TimeUnit.MILLISECONDS)
+            //mServer?.stop(250L, 250L, TimeUnit.MILLISECONDS)
+            mServer?.stop()
         } catch (e: Exception) {
             e.printStackTrace()
         }
