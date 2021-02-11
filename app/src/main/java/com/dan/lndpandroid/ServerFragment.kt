@@ -132,6 +132,8 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
 
         mBinding.btnStartServer.isEnabled = mWifiConnected && null == mServer && mBinding.txtName.text.isNotEmpty() && activity.settings.publicFolderUri.isNotEmpty()
         mBinding.btnStopServer.isEnabled = null != mServer
+        mBinding.txtName.isEnabled = null == mServer
+        mBinding.btnSelectFolder.isEnabled = null == mServer
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
