@@ -1,5 +1,7 @@
 package com.dan.lndpandroid
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -10,12 +12,14 @@ import android.net.Uri
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
 import android.text.format.Formatter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import androidx.fragment.app.Fragment
 import com.dan.lndpandroid.databinding.ServerFragmentBinding
 import fi.iki.elonen.NanoHTTPD
@@ -34,16 +38,40 @@ import kotlin.concurrent.timer
 class ServerFragment(val activity: MainActivity) : Fragment() {
     companion object {
         const val INTENT_SELECT_FOLDER = 1
+
+        const val NOTIFICATION_ID = 1
     }
 
     private val mBinding: ServerFragmentBinding by lazy { ServerFragmentBinding.inflate(layoutInflater) }
     private val mWifiManager: WifiManager by lazy { activity.getSystemService(AppCompatActivity.WIFI_SERVICE) as WifiManager }
     private val mConnectivityManager: ConnectivityManager by lazy { activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager }
     private val mNsdManager: NsdManager by lazy { activity.getSystemService(Context.NSD_SERVICE) as NsdManager }
+    private val mNotificationManager: NotificationManager by lazy { activity.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
     private var mServer: NanoHTTPD? = null
     private var mWifiConnected = false
     private var mWifiIpAddress = ""
     private lateinit var mPublicUriFile: UriFile
+    private var mNotification: NotificationCompat.Builder? = null
+
+    init {
+        val appName = activity.getString(R.string.app_name)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationChannel = NotificationChannel( appName, appName, NotificationManager.IMPORTANCE_LOW )
+            notificationChannel.description = appName
+            notificationChannel.enableLights(false)
+            notificationChannel.enableVibration(false)
+
+            mNotificationManager.createNotificationChannel(notificationChannel)
+        }
+
+        mNotification = NotificationCompat.Builder(activity.applicationContext, appName).apply {
+            setContentTitle(appName)
+            setContentText("Server started")
+            setSmallIcon(R.drawable.ic_launcher_foreground)
+            setPriority(NotificationCompat.PRIORITY_LOW)
+        }
+    }
 
     private val mConnectivityManagerNetworkCallback = object: ConnectivityManager.NetworkCallback() {
         override fun onUnavailable() {
@@ -359,10 +387,20 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
         activity.settings.serverName = mBinding.txtName.text.toString()
         activity.settings.saveProperties()
 
+        mNotification?.let { notification ->
+            mNotificationManager.notify(NOTIFICATION_ID, notification.build())
+        }
+
         updateServerState()
     }
 
     private fun stopServer() {
+        try {
+            mNotificationManager.cancel(NOTIFICATION_ID)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         try {
             mNsdManager.unregisterService(mNsdManagerRegistrationListener)
         } catch (e: Exception) {
