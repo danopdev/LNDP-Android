@@ -257,11 +257,17 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
     private fun setFolder(folder: UriFile?, isLeft: Boolean) {
         if (isLeft) {
             mLeftFolder = folder
-            if (null != folder) activity.settings.leftSourceUri = folder.uri.toString()
+            if (null != folder) {
+                activity.settings.leftSourceUri = folder.uri.toString()
+                activity.settings.saveProperties()
+            }
         }
         else {
             mRightFolder = folder
-            if (null != folder) activity.settings.rightSourceUri = folder.uri.toString()
+            if (null != folder) {
+                activity.settings.rightSourceUri = folder.uri.toString()
+                activity.settings.saveProperties()
+            }
         }
 
         val txtSource = if (isLeft) mBinding.txtLeftSource else mBinding.txtRightSource
