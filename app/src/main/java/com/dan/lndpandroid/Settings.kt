@@ -70,6 +70,6 @@ class Settings( private val activity: Activity) {
             }
         }
 
-        editor.commit()
+        editor.apply()
     }
 }
