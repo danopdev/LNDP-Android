@@ -27,7 +27,9 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.timer
 
 
 class LNDocumentsProvider : DocumentsProvider() {
@@ -424,6 +426,17 @@ class LNDocumentsProvider : DocumentsProvider() {
 
         connectivityManager.registerDefaultNetworkCallback(connectivityManagerNetworkCallback)
         updateNetworkState()
+
+        //pool state every 5 seconds ... just a backup
+        Timer().schedule(
+            object : TimerTask() {
+                override fun run() {
+                    updateNetworkState()
+                }
+            },
+            5000,
+            5000
+        )
 
         return true
     }
