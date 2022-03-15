@@ -27,7 +27,6 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.timer
 
@@ -348,6 +347,8 @@ class LNDocumentsProvider : DocumentsProvider() {
         val writePipe = pipes[1]
 
         GlobalScope.launch(Dispatchers.IO) {
+            var success = true
+
             try {
                 var offset = 0
                 val fos = FileOutputStream(writePipe.fileDescriptor)
@@ -355,7 +356,11 @@ class LNDocumentsProvider : DocumentsProvider() {
                 while (true) {
                     val result = readUrlConnection(getUrlConnection(getGetDocumentUrl(documentId, "documentRead", "&offset=${offset}&size=${BUFFER_SIZE}"))) ?: break
 
-                    if (HttpURLConnection.HTTP_OK != result.first) break
+                    if (HttpURLConnection.HTTP_OK != result.first) {
+                        success = false
+                        break
+                    }
+
                     if (result.second.isEmpty()) break
 
                     fos.write(result.second)
@@ -367,7 +372,11 @@ class LNDocumentsProvider : DocumentsProvider() {
             }
 
             try {
-                writePipe.close()
+                if (success) {
+                    writePipe.close()
+                } else {
+                    writePipe.closeWithError("HTTP Error")
+                }
             } catch (e: Exception) {
             }
         }
@@ -381,14 +390,15 @@ class LNDocumentsProvider : DocumentsProvider() {
         val writePipe = pipes[1]
 
         GlobalScope.launch(Dispatchers.IO) {
+            var success = true
+
             try {
                 val buffer = ByteArray(BUFFER_SIZE)
                 val fis = FileInputStream(readPipe.fileDescriptor)
 
                 while (true) {
                     val readSize = fis.read(buffer)
-                    if (readSize < 0) break
-                    if (0 == readSize) continue
+                    if (readSize <= 0) break
 
                     val urlAndFile = getPutUrl(documentId, "documentAppend") ?: break
                     val serverConnection = getUrlConnection( urlAndFile.first ) ?: break
@@ -427,16 +437,9 @@ class LNDocumentsProvider : DocumentsProvider() {
         connectivityManager.registerDefaultNetworkCallback(connectivityManagerNetworkCallback)
         updateNetworkState()
 
-        //pool state every 5 seconds ... just a backup
-        Timer().schedule(
-            object : TimerTask() {
-                override fun run() {
-                    updateNetworkState()
-                }
-            },
-            5000,
-            5000
-        )
+        timer(null, false, Settings.WIFI_POOL_STATE_TIMEOUT, Settings.WIFI_POOL_STATE_TIMEOUT) {
+            updateNetworkState()
+        }
 
         return true
     }
