@@ -8,7 +8,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentManager
 import com.dan.lndpandroid.databinding.BusyDialogBinding
 
-class BusyDialog(private val title: String, private var details: String): DialogFragment() {
+class BusyDialog(private val title: String, private var details: String, private var counter: Int): DialogFragment() {
 
     private var binding: BusyDialogBinding? = null
     private var indeterminate: Boolean = true
@@ -24,10 +24,10 @@ class BusyDialog(private val title: String, private var details: String): Dialog
             activity = activity_
         }
 
-        fun show(supportFragmentManager: FragmentManager, title_: String, details: String) {
+        fun show(supportFragmentManager: FragmentManager, title_: String, details: String, counter: Int = 0) {
             if (null == currentDialog) {
                 title = title_
-                val dialog = BusyDialog(title, details)
+                val dialog = BusyDialog(title, details, counter)
                 dialog.isCancelable = false
                 dialog.show(supportFragmentManager, FRAGMENT_TAG)
                 currentDialog = dialog
@@ -50,6 +50,15 @@ class BusyDialog(private val title: String, private var details: String): Dialog
             }
         }
 
+        fun updateCounter(counter: Int) {
+            activity.runOnUiThread {
+                currentDialog?.let { dialog ->
+                    dialog.counter = counter
+                    dialog.binding?.txtCounter?.text = if (counter > 0) counter.toString() else ""
+                }
+            }
+        }
+
         fun updateProgress(progress: Long, size: Long) {
             activity.runOnUiThread {
                 currentDialog?.let { dialog ->
@@ -68,6 +77,7 @@ class BusyDialog(private val title: String, private var details: String): Dialog
         binding.txtDetails.text = details
         binding.progressBar.isIndeterminate = indeterminate
         binding.progressBar.progress = progress
+        binding.txtCounter.text = if (counter > 0) counter.toString() else ""
 
         this.binding = binding
         return binding.root
