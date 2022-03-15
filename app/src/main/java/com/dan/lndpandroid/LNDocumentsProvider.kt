@@ -37,6 +37,8 @@ class LNDocumentsProvider : DocumentsProvider() {
 
         const val AUTHORITY = "com.dan.lndpandroid"
 
+        const val HTTP_ERROR = "HTTP Error"
+
         const val BUFFER_SIZE = 1024*500
 
         private val DEFAULT_ROOT_PROJECTION = arrayOf(
@@ -342,7 +344,7 @@ class LNDocumentsProvider : DocumentsProvider() {
     }
 
     private fun readDocument( documentId: String ): ParcelFileDescriptor {
-        val pipes = ParcelFileDescriptor.createPipe()
+        val pipes = ParcelFileDescriptor.createReliablePipe()
         val readPipe = pipes[0]
         val writePipe = pipes[1]
 
@@ -375,7 +377,7 @@ class LNDocumentsProvider : DocumentsProvider() {
                 if (success) {
                     writePipe.close()
                 } else {
-                    writePipe.closeWithError("HTTP Error")
+                    writePipe.closeWithError(HTTP_ERROR)
                 }
             } catch (e: Exception) {
             }
@@ -385,20 +387,26 @@ class LNDocumentsProvider : DocumentsProvider() {
     }
 
     private fun writeDocument( documentId: String ): ParcelFileDescriptor {
-        val pipes = ParcelFileDescriptor.createPipe()
+        val pipes = ParcelFileDescriptor.createReliablePipe()
         val readPipe = pipes[0]
         val writePipe = pipes[1]
 
         GlobalScope.launch(Dispatchers.IO) {
-            var success = true
+            var success = false
 
             try {
                 val buffer = ByteArray(BUFFER_SIZE)
                 val fis = FileInputStream(readPipe.fileDescriptor)
 
                 while (true) {
+                    readPipe.checkError()
+                    writePipe.checkError()
+
                     val readSize = fis.read(buffer)
-                    if (readSize <= 0) break
+                    if (readSize < 0) {
+                        success = true
+                        break
+                    }
 
                     val urlAndFile = getPutUrl(documentId, "documentAppend") ?: break
                     val serverConnection = getUrlConnection( urlAndFile.first ) ?: break
@@ -415,7 +423,11 @@ class LNDocumentsProvider : DocumentsProvider() {
             }
 
             try {
-                writePipe.close()
+                if (success) {
+                    readPipe.close()
+                } else {
+                    readPipe.closeWithError(HTTP_ERROR)
+                }
             } catch (e: Exception) {
             }
         }
