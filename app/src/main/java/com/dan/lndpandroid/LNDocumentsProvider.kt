@@ -347,8 +347,9 @@ class LNDocumentsProvider : DocumentsProvider() {
         val pipes = ParcelFileDescriptor.createReliablePipe()
         val readPipe = pipes[0]
         val writePipe = pipes[1]
+        var canReturn = false
 
-        GlobalScope.launch(Dispatchers.IO) {
+        GlobalScope.launch(Dispatchers.Default) {
             var success = true
 
             try {
@@ -367,11 +368,14 @@ class LNDocumentsProvider : DocumentsProvider() {
 
                     fos.write(result.second)
                     offset += result.second.size
+                    canReturn = true
                 }
             }
             catch (e: Exception) {
                 e.printStackTrace()
             }
+
+            canReturn = true
 
             try {
                 if (success) {
@@ -383,6 +387,11 @@ class LNDocumentsProvider : DocumentsProvider() {
             }
         }
 
+        //wait for the first read
+        while (!canReturn) {
+            Thread.sleep(100)
+        }
+
         return readPipe
     }
 
@@ -391,7 +400,7 @@ class LNDocumentsProvider : DocumentsProvider() {
         val readPipe = pipes[0]
         val writePipe = pipes[1]
 
-        GlobalScope.launch(Dispatchers.IO) {
+        GlobalScope.launch(Dispatchers.Default) {
             var success = false
 
             try {
@@ -406,6 +415,11 @@ class LNDocumentsProvider : DocumentsProvider() {
                     if (readSize < 0) {
                         success = true
                         break
+                    }
+
+                    if (0 == readSize) {
+                        Thread.sleep(100) //wait 100 ms to allow more data
+                        continue
                     }
 
                     val urlAndFile = getPutUrl(documentId, "documentAppend") ?: break
