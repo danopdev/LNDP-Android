@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.*
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
@@ -18,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.*
+import java.lang.Math.min
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -39,6 +41,8 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
 
         const val BITAMP_SMALL_SIZE = 1920
         const val BITMAP_QUALITY = 75
+
+        const val MAX_FAIL_COUNTER = 3
 
         val RAW_EXTENSIONS = arrayOf(".RW2", ".DNG")
 
@@ -456,9 +460,6 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
     private fun copyFileAsync( txtPrefix: String, sourceUri: UriFile, destFolder: UriFile, copyMode: Int, buffer: ByteArray, existingUri: UriFile? ) {
         var inputStream: InputStream? = null
         var outputStream: OutputStream? = null
-        val size: Long
-        var offset: Long
-        var readSize: Int
         val small = MENU_COPY_SMALL == copyMode
 
         if (null != existingUri && MENU_UPDATE == copyMode) {
@@ -468,27 +469,39 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
             }
         }
 
+        var sourceSize = -1L
+        var destSize = 0L
+
         Log.i("COPY_FILE", "Copy: '${txtPrefix}${sourceUri.name}'")
         try {
             val sourceInfo = getInputStream(sourceUri, small)
             val name = sourceInfo.first
-            size = sourceInfo.second
+            sourceSize = sourceInfo.second
             inputStream = sourceInfo.third
             BusyDialog.updateDetails(txtPrefix + name)
-            BusyDialog.updateProgress(0, size)
+            BusyDialog.updateProgress(0, sourceSize)
 
-            val newDocumentUri = existingUri?.uri ?: destFolder.createFile(sourceUri.mimeType, name )
-            if (null != newDocumentUri) {
-                outputStream = activity.contentResolver.openOutputStream(newDocumentUri, "w")
-                if (null != outputStream) {
-                    offset = 0
-                    while (true) {
-                        if (size > 0)
-                            BusyDialog.updateProgress(offset, size)
-                        readSize = inputStream.read(buffer)
-                        if (readSize <= 0) break
-                        outputStream.write(buffer, 0, readSize)
-                        offset += readSize
+            if (sourceSize > 0) {
+                val newDocumentUri = existingUri?.uri ?: destFolder.createFile(sourceUri.mimeType, name)
+                if (null != newDocumentUri) {
+                    outputStream = activity.contentResolver.openOutputStream(newDocumentUri, "w")
+                    if (null != outputStream) {
+                        var remainingSize = sourceSize
+                        var failCounter = 0
+                        while (remainingSize > 0) {
+                            BusyDialog.updateProgress(destSize, sourceSize)
+                            val currentReadSize = min(buffer.size.toLong(), remainingSize).toInt()
+                            val readSize = inputStream.read(buffer, 0, currentReadSize)
+                            if (readSize <= 0) {
+                                failCounter++
+                                if (failCounter >= MAX_FAIL_COUNTER) break
+                                continue
+                            }
+
+                            failCounter = 0
+                            outputStream.write(buffer, 0, readSize)
+                            destSize += readSize
+                        }
                     }
                 }
             }
@@ -507,6 +520,12 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
                 outputStream.close()
         } catch (e: Exception) {
         }
+
+        if (sourceSize < 0 || sourceSize != destSize) {
+            activity.runOnUiThread {
+                Toast.makeText(activity.applicationContext, "Failed: ${sourceUri.name}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     data class CopyFolderInfo( val txtPrefix: String, val srcFolder: UriFile, val srcItems: ArrayList<UriFile>?, val destFolder: UriFile )
@@ -515,6 +534,8 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
         val copyInfoMQ = mutableListOf(copyInfoRoot)
 
         while (copyInfoMQ.size > 0) {
+            BusyDialog.updateCounter(copyInfoMQ.size)
+
             val copyInfo = copyInfoMQ.removeAt(0)
             val sourceItems = copyInfo.srcItems ?: copyInfo.srcFolder.listFiles()
             val existingItems = copyInfo.destFolder.listFiles()
