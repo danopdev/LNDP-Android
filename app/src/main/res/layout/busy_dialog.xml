@@ -69,6 +69,15 @@
             android:progressBackgroundTint="#808080"
             android:progressTint="#0080FF" />
 
+        <TextView
+            android:id="@+id/textProgressInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:textAlignment="textEnd"
+            android:textAppearance="@style/TextAppearance.AppCompat.Small" />
+
     </LinearLayout>
 
 </layout>

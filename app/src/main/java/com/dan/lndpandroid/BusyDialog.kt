@@ -8,7 +8,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentManager
 import com.dan.lndpandroid.databinding.BusyDialogBinding
 
-class BusyDialog(private val title: String, private var details: String, private var counter: Int): DialogFragment() {
+class BusyDialog(private val title: String, private var details: String): DialogFragment() {
 
     private var binding: BusyDialogBinding? = null
     private var indeterminate: Boolean = true
@@ -24,10 +24,10 @@ class BusyDialog(private val title: String, private var details: String, private
             activity = activity_
         }
 
-        fun show(supportFragmentManager: FragmentManager, title_: String, details: String, counter: Int = 0) {
+        fun show(supportFragmentManager: FragmentManager, title_: String, details: String) {
             if (null == currentDialog) {
                 title = title_
-                val dialog = BusyDialog(title, details, counter)
+                val dialog = BusyDialog(title, details)
                 dialog.isCancelable = false
                 dialog.show(supportFragmentManager, FRAGMENT_TAG)
                 currentDialog = dialog
@@ -53,7 +53,6 @@ class BusyDialog(private val title: String, private var details: String, private
         fun updateCounter(counter: Int) {
             activity.runOnUiThread {
                 currentDialog?.let { dialog ->
-                    dialog.counter = counter
                     dialog.binding?.txtCounter?.text = if (counter > 0) counter.toString() else ""
                 }
             }
@@ -68,6 +67,14 @@ class BusyDialog(private val title: String, private var details: String, private
                 }
             }
         }
+
+        fun updateProgressInfo(info: String) {
+            activity.runOnUiThread {
+                currentDialog?.let { dialog ->
+                    dialog.binding?.textProgressInfo?.text = info
+                }
+            }
+        }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -77,7 +84,6 @@ class BusyDialog(private val title: String, private var details: String, private
         binding.txtDetails.text = details
         binding.progressBar.isIndeterminate = indeterminate
         binding.progressBar.progress = progress
-        binding.txtCounter.text = if (counter > 0) counter.toString() else ""
 
         this.binding = binding
         return binding.root

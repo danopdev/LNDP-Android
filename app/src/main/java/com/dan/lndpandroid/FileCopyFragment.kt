@@ -480,6 +480,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
             inputStream = sourceInfo.third
             BusyDialog.updateDetails(txtPrefix + name)
             BusyDialog.updateProgress(0, sourceSize)
+            BusyDialog.updateProgressInfo("")
 
             if (sourceSize > 0) {
                 val newDocumentUri = existingUri?.uri ?: destFolder.createFile(sourceUri.mimeType, name)
@@ -488,8 +489,8 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
                     if (null != outputStream) {
                         var remainingSize = sourceSize
                         var failCounter = 0
+                        val startTime = System.currentTimeMillis()
                         while (remainingSize > 0) {
-                            BusyDialog.updateProgress(destSize, sourceSize)
                             val currentReadSize = min(buffer.size.toLong(), remainingSize).toInt()
                             val readSize = inputStream.read(buffer, 0, currentReadSize)
                             if (readSize <= 0) {
@@ -501,6 +502,15 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
                             failCounter = 0
                             outputStream.write(buffer, 0, readSize)
                             destSize += readSize
+                            remainingSize -= readSize
+                            BusyDialog.updateProgress(destSize, sourceSize)
+
+                            val now = System.currentTimeMillis()
+                            val delta = now - startTime
+                            if (delta >= 1000L) {
+                                val debit = ((destSize / 1024.0) / (delta / 1000.0)).toLong()
+                                if (debit > 0) BusyDialog.updateProgressInfo("{speed} kb/s")
+                            }
                         }
                     }
                 }
