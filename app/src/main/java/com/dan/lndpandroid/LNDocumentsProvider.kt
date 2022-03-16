@@ -366,9 +366,9 @@ class LNDocumentsProvider : DocumentsProvider() {
 
                     if (result.second.isEmpty()) break
 
+                    canReturn = true
                     fos.write(result.second)
                     offset += result.second.size
-                    canReturn = true
                 }
             }
             catch (e: Exception) {
