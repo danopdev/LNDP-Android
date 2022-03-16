@@ -542,15 +542,19 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
 
     private fun copyItemsAsync( copyInfoRoot: CopyFolderInfo, copyMode: Int, buffer: ByteArray ) {
         val copyInfoMQ = mutableListOf(copyInfoRoot)
+        var total = 0
+        var counter = 0
 
         while (copyInfoMQ.size > 0) {
-            BusyDialog.updateCounter(copyInfoMQ.size)
-
             val copyInfo = copyInfoMQ.removeAt(0)
             val sourceItems = copyInfo.srcItems ?: copyInfo.srcFolder.listFiles()
             val existingItems = copyInfo.destFolder.listFiles()
 
+            total += sourceItems.size
+
             for (sourceItem in sourceItems) {
+                counter++
+                BusyDialog.updateProgressTotal("$counter / $total")
                 val existingItem = existingItems.find { it.name == sourceItem.name }
                 if (sourceItem.isDirectory) {
                     var destSubFolder: UriFile

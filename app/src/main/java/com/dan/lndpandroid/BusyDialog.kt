@@ -50,10 +50,10 @@ class BusyDialog(private val title: String, private var details: String): Dialog
             }
         }
 
-        fun updateCounter(counter: Int) {
+        fun updateProgressTotal(progress: String) {
             activity.runOnUiThread {
                 currentDialog?.let { dialog ->
-                    dialog.binding?.txtCounter?.text = if (counter > 0) counter.toString() else ""
+                    dialog.binding?.txtProgressTotal?.text = progress
                 }
             }
         }
