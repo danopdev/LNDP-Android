@@ -34,11 +34,8 @@ import kotlin.concurrent.timer
 class LNDocumentsProvider : DocumentsProvider() {
     companion object {
         const val LOG_TAG = "LNDP"
-
         const val AUTHORITY = "com.dan.lndpandroid"
-
         const val HTTP_ERROR = "HTTP Error"
-
         const val BUFFER_SIZE = 1024*500
 
         private val DEFAULT_ROOT_PROJECTION = arrayOf(
@@ -276,8 +273,9 @@ class LNDocumentsProvider : DocumentsProvider() {
 
     private fun getPutUrl(documentId: String?, prefix: String): Pair<ServerUrl,String>? {
         val serviceInfo = getServerInfo(documentId) ?: return null
+        @Suppress("DEPRECATION")
         return Pair(
-            ServerUrl(serviceInfo.name, URL("http://${serviceInfo.host}:${serviceInfo.port}/lndp/${prefix}") ),
+            ServerUrl(serviceInfo.name, URL("http://${serviceInfo.host}:${serviceInfo.port}/lndp/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}") ),
             serviceInfo.path)
     }
 
@@ -425,7 +423,6 @@ class LNDocumentsProvider : DocumentsProvider() {
                     val urlAndFile = getPutUrl(documentId, "documentAppend") ?: break
                     val serverConnection = getUrlConnection( urlAndFile.first ) ?: break
                     val httpPost = HttpPost(serverConnection.connection)
-                    httpPost.addFormField("path", urlAndFile.second )
                     httpPost.addFileBlock("block", "block", buffer, readSize)
                     httpPost.finish()
                     val data = readUrlConnection(serverConnection) ?: break
@@ -505,10 +502,10 @@ class LNDocumentsProvider : DocumentsProvider() {
     }
 
     override fun isChildDocument(parentDocumentId: String?, documentId: String?): Boolean {
-        if (null == parentDocumentId || null == documentId)
+        var fullParentId = parentDocumentId
+        if (null == fullParentId || null == documentId)
             return false
 
-        var fullParentId = parentDocumentId
         if (!fullParentId.endsWith('/'))
             fullParentId += "/"
 
