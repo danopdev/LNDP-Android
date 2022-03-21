@@ -268,14 +268,14 @@ class LNDocumentsProvider : DocumentsProvider() {
     private fun getGetDocumentUrl(documentId: String?, prefix: String, extra: String = ""): ServerUrl? {
         val serviceInfo = getServerInfo(documentId) ?: return null
         @Suppress("DEPRECATION")
-        return ServerUrl(serviceInfo.name, URL("http://${serviceInfo.host}:${serviceInfo.port}/lndp/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}${extra}"))
+        return ServerUrl(serviceInfo.name, URL("http://${serviceInfo.host}:${serviceInfo.port}/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}${extra}"))
     }
 
     private fun getPutUrl(documentId: String?, prefix: String): Pair<ServerUrl,String>? {
         val serviceInfo = getServerInfo(documentId) ?: return null
         @Suppress("DEPRECATION")
         return Pair(
-            ServerUrl(serviceInfo.name, URL("http://${serviceInfo.host}:${serviceInfo.port}/lndp/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}") ),
+            ServerUrl(serviceInfo.name, URL("http://${serviceInfo.host}:${serviceInfo.port}/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}") ),
             serviceInfo.path)
     }
 
