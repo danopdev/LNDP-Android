@@ -20,7 +20,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Copy To"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                app:icon="@android:drawable/arrow_down_float"
+                app:iconGravity="end" />
 
             <LinearLayout
                 android:id="@+id/layoutRight"
