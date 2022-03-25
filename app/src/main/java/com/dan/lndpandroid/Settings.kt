@@ -16,11 +16,9 @@ class Settings( private val activity: Activity) {
         const val PORT = 1234
 
         const val BUFFER_SIZE = 500 * 1024
-
         const val THUMBNAIL_SIZE = 300
 
         const val URL_TIMEOUT = 20000
-
         const val WIFI_POOL_STATE_TIMEOUT = 5000L
     }
 
