@@ -344,10 +344,10 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
 
                     if (null != session) {
                         when (session.uri) {
-                            "/lndp/queryDocument" -> response = lndpQueryDocument(session)
-                            "/lndp/queryChildDocuments" -> response = lndpQueryChildDocuments(session)
-                            "/lndp/documentRead" -> response = lndpDocumentRead(session)
-                            "/lndp/documentReadThumb" -> response = lndpDocumentReadThumb(session)
+                            "/queryDocument" -> response = lndpQueryDocument(session)
+                            "/queryChildDocuments" -> response = lndpQueryChildDocuments(session)
+                            "/documentRead" -> response = lndpDocumentRead(session)
+                            "/documentReadThumb" -> response = lndpDocumentReadThumb(session)
                         }
                     }
 
