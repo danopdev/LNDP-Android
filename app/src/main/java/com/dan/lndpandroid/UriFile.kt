@@ -34,14 +34,13 @@ class UriFile(
 
         private val DATE_FORMAT = SimpleDateFormat("yyyy:MM:dd hh:mm:ss")
 
-        private fun queryTreeUri( context: Context, queryUri: Uri, treeUri: Uri, onlyFirstRecord: Boolean ): List<UriFile> {
+        private fun queryUri( context: Context, uriQuery: Uri, uri: Uri, onlyFirstRecord: Boolean, isTreeUri: Boolean ): List<UriFile> {
             val result = mutableListOf<UriFile>()
-            val authority = treeUri.authority ?: return result
-
+            val authority = uri.authority ?: return result
             var cursor: Cursor? = null
 
             try {
-                cursor = context.contentResolver.query(queryUri, PROJECTION, null, null, null)
+                cursor = context.contentResolver.query(uriQuery, PROJECTION, null, null, null)
                 if (null != cursor) {
                     val indexDocumentId = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
                     val indexDisplayName = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
@@ -56,7 +55,7 @@ class UriFile(
                             result.add(
                                 UriFile(
                                     context,
-                                    DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId),
+                                    if (isTreeUri) DocumentsContract.buildDocumentUriUsingTree(uri, documentId) else uri,
                                     authority,
                                     documentId,
                                     cursor.getInt(indexFlags),
@@ -84,20 +83,27 @@ class UriFile(
             return result.toList()
         }
 
-        fun formatTimeStamp(timestamp: Long) = DATE_FORMAT.format(Date(timestamp))
+        private fun formatTimeStamp(timestamp: Long): String = DATE_FORMAT.format(Date(timestamp))
 
-        fun fromDocumentId( context: Context, treeUri: Uri, documentId: String ): UriFile? {
+        fun fromTreeDocumentId( context: Context, treeUri: Uri, documentId: String ): UriFile? {
             val uri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
-            val list = queryTreeUri(context, uri, uri, true)
-            return if (list.size > 0) list[0] else null
+            val list = queryUri(context, uri, uri, true, true)
+            return if (list.isNotEmpty()) list[0] else null
         }
 
-        fun fromUri(context: Context, treeUri: Uri): UriFile? {
-            val documentId =
-                if (DocumentsContract.isDocumentUri(context, treeUri) ) DocumentsContract.getDocumentId(treeUri)
-                else DocumentsContract.getTreeDocumentId(treeUri)
+        fun fromTreeUri(context: Context, uri: Uri): UriFile? {
+            val documentId = if (DocumentsContract.isDocumentUri(context, uri)) {
+                DocumentsContract.getDocumentId(uri)
+            } else {
+                DocumentsContract.getTreeDocumentId(uri)
+            }
 
-            return fromDocumentId( context, treeUri, documentId)
+            return fromTreeDocumentId( context, uri, documentId )
+        }
+
+        fun fromSingleUri(context: Context, uri: Uri): UriFile? {
+            val list = queryUri(context, uri, uri, true, false)
+            return if (list.isNotEmpty()) list[0] else null
         }
     }
 
@@ -108,7 +114,7 @@ class UriFile(
     fun listFiles(): List<UriFile> {
         try {
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, documentId) ?: return listOf<UriFile>()
-            return queryTreeUri(context, childrenUri, uri, false)
+            return queryUri(context, childrenUri, uri, false, true)
         } catch (e: Exception) {
         }
 
