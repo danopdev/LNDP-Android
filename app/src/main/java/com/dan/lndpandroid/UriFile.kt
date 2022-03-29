@@ -1,5 +1,6 @@
 package com.dan.lndpandroid
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
 import android.graphics.Bitmap
@@ -32,6 +33,7 @@ class UriFile(
             DocumentsContract.Document.COLUMN_FLAGS
         )
 
+        @SuppressLint("SimpleDateFormat")
         private val DATE_FORMAT = SimpleDateFormat("yyyy:MM:dd hh:mm:ss")
 
         private fun queryUri( context: Context, uriQuery: Uri, uri: Uri, onlyFirstRecord: Boolean, isTreeUri: Boolean ): List<UriFile> {
@@ -87,7 +89,7 @@ class UriFile(
 
         fun fromTreeDocumentId( context: Context, treeUri: Uri, documentId: String ): UriFile? {
             val uri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
-            val list = queryUri(context, uri, uri, true, true)
+            val list = queryUri(context, uri, uri, onlyFirstRecord = true, isTreeUri = true)
             return if (list.isNotEmpty()) list[0] else null
         }
 
@@ -102,7 +104,7 @@ class UriFile(
         }
 
         fun fromSingleUri(context: Context, uri: Uri): UriFile? {
-            val list = queryUri(context, uri, uri, true, false)
+            val list = queryUri(context, uri, uri, onlyFirstRecord = true, isTreeUri = false)
             return if (list.isNotEmpty()) list[0] else null
         }
     }
@@ -114,7 +116,7 @@ class UriFile(
     fun listFiles(): List<UriFile> {
         try {
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, documentId) ?: return listOf<UriFile>()
-            return queryUri(context, childrenUri, uri, false, true)
+            return queryUri(context, childrenUri, uri, onlyFirstRecord = false, isTreeUri = true)
         } catch (e: Exception) {
         }
 
