@@ -21,12 +21,13 @@ import kotlinx.coroutines.launch
 import java.io.*
 import java.lang.Math.min
 import java.util.*
-import kotlin.collections.ArrayList
 
-class FileCopyFragment(val activity: MainActivity) : Fragment() {
+class FileCopyFragment(private val activity: MainActivity) : Fragment() {
 
     companion object {
-        const val INTENT_SELECT_FOLDER = 2
+        const val INTENT_SELECT_DESTINATION = 1
+        const val INTENT_SELECT_SOURCE_FOLDER = 2
+        const val INTENT_SELECT_SOURCE_FILES = 3
 
         const val MENU_COPY = 1
         const val MENU_COPY_SMALL = 2
@@ -39,12 +40,12 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
         const val MENU_ITEM_SELECT_ALL_IMAGES = 21
         const val MENU_ITEM_SELECT_ALL_RAW = 22
 
-        const val BITAMP_SMALL_SIZE = 1920
+        const val BITMAP_SMALL_SIZE = 1920
         const val BITMAP_QUALITY = 75
 
         const val MAX_FAIL_COUNTER = 3
 
-        val RAW_EXTENSIONS = arrayOf(".RW2", ".DNG")
+        private val RAW_EXTENSIONS = arrayOf(".RW2", ".DNG")
 
         var defaultFileBitmap: Bitmap? = null
         var defaultFolderBitmap: Bitmap? = null
@@ -57,50 +58,13 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
             }
             return false
         }
-
-        fun getSourceAndPath(file: UriFile): Pair<String,String> {
-            val authority = file.authority
-            val authorityFields = authority.split('.')
-            val authorityShort =
-                if (authorityFields.size <= 1) {
-                    authority
-                } else if ("documents".equals(authorityFields[authorityFields.size-1])) {
-                    authorityFields[authorityFields.size-2]
-                } else {
-                    authorityFields[authorityFields.size-2] + "." + authorityFields[authorityFields.size-1]
-                }
-
-            var authorityItem = ""
-            var path: String
-
-            val lastPathSegment: String? = file.uri.lastPathSegment
-            if (null == lastPathSegment) {
-                path = file.name
-            } else {
-                val pathFields = lastPathSegment.split(':')
-                if (pathFields.size <= 1) {
-                    path = lastPathSegment
-                } else {
-                    authorityItem = pathFields[0]
-                    path = pathFields[pathFields.size-1]
-                    if (!path.startsWith('/')) path = "/" + path
-                }
-            }
-
-            var source = authorityShort
-            if (authorityItem.isNotEmpty()) source += ": " + authorityItem
-
-            return Pair(source, path)
-        }
     }
 
     private val mBinding: FileCopyFragmentBinding by lazy { FileCopyFragmentBinding.inflate(layoutInflater) }
     private val mListAdapter: FilesViewAdapter by lazy { FilesViewAdapter(activity, mBinding.listView) }
-    private var mLeftFolder: UriFile? = null
-    private var mRightFolder: UriFile? = null
+    private var mDestFolder: UriFile? = null
     private var mUpdateId = 0
     private var mSelectedSize = 0
-    private var mOnSelectFolder: ((Uri)->Unit)? = null
 
     init {
         BusyDialog.create(activity)
@@ -108,11 +72,44 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
         super.onActivityResult(requestCode, resultCode, intent)
+        if (AppCompatActivity.RESULT_OK != resultCode) return
 
-        if (INTENT_SELECT_FOLDER == requestCode && AppCompatActivity.RESULT_OK == resultCode && null != intent && null != intent.data) {
-            val uri = intent.data as Uri
-            mOnSelectFolder?.invoke(uri)
-            mOnSelectFolder = null
+        when(requestCode) {
+            INTENT_SELECT_DESTINATION -> if (null != intent && null != intent.data) {
+                val uriFile = UriFile.fromUri(requireContext(), intent.data as Uri)
+                mDestFolder = uriFile
+
+                if (null == uriFile) {
+                    mBinding.btnDestination.setTypeface(null, Typeface.ITALIC)
+                    mBinding.btnDestination.text = "Select destination"
+                } else {
+                    mBinding.btnDestination.setTypeface(null, Typeface.NORMAL)
+                    mBinding.btnDestination.text = uriFile.name
+                }
+
+                updateCopyButton()
+            }
+
+            INTENT_SELECT_SOURCE_FOLDER -> if (null != intent && null != intent.data) {
+                val uriFile = UriFile.fromUri(requireContext(), intent.data as Uri)
+                if (null != uriFile) {
+                    updateSourceItems(uriFile.listFiles())
+                }
+            }
+
+            INTENT_SELECT_SOURCE_FILES -> {
+                intent?.clipData?.let { clipData ->
+                    val uriFileList = mutableListOf<UriFile>()
+                    val count = clipData.itemCount
+                    for (i in 0 until count) {
+                        val uriFile = UriFile.fromUri(requireContext(), intent.data as Uri)
+                        if (null != uriFile) {
+                            uriFileList.add(uriFile)
+                        }
+                    }
+                    updateSourceItems(uriFileList)
+                }
+            }
         }
     }
 
@@ -174,19 +171,36 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
         contextMenu.add( 0, 0, MENU_UPDATE, "Update To" )
     }
 
-    fun selectFolder(callback: (Uri) -> Unit) {
-        mOnSelectFolder = callback
-
+    private fun selectDestination() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-        intent.putExtra("android.content.extra.SHOW_ADVANCED", true)
-        intent.addFlags(
+            .putExtra("android.content.extra.SHOW_ADVANCED", true)
+            .addFlags(
             Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     Intent.FLAG_GRANT_PREFIX_URI_PERMISSION or
                     Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
         )
 
-        startActivityForResult(intent, INTENT_SELECT_FOLDER)
+        startActivityForResult(intent, INTENT_SELECT_DESTINATION)
+    }
+
+    private fun selectSourceFolder() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            .putExtra("android.content.extra.SHOW_ADVANCED", true)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+        startActivityForResult(intent, INTENT_SELECT_SOURCE_FOLDER)
+    }
+
+    private fun selectSourceFiles() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+            .putExtra("android.content.extra.SHOW_ADVANCED", true)
+            .putExtra( Intent.EXTRA_ALLOW_MULTIPLE, true )
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            .setType("*/*")
+
+        startActivityForResult(intent, INTENT_SELECT_SOURCE_FILES)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -198,19 +212,13 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
         mBinding.listView.adapter = mListAdapter
         mBinding.listView.layoutManager = LinearLayoutManager(context)
 
-        mBinding.layoutLeft.setOnClickListener { selectFolder { uri -> setFolderUri(uri, true) } }
-        mBinding.layoutRight.setOnClickListener { selectFolder { uri -> setFolderUri(uri, false) } }
-
+        mBinding.btnDestination.setOnClickListener { selectDestination() }
+        mBinding.btnSourceFolder.setOnClickListener { selectSourceFolder() }
+        mBinding.btnSourceFiles.setOnClickListener { selectSourceFiles() }
         mBinding.btnCopy.setOnClickListener { copy(MENU_COPY) }
         mBinding.btnCopy.setOnCreateContextMenuListener { contextMenu, _, _ -> onCopyToContextMenu(contextMenu) }
-        updateCopyButton()
 
-        mBinding.btnSwitch.setOnClickListener {
-            val oldLeftFolder = this.mLeftFolder
-            val oldRightFolder = this.mRightFolder
-            setFolder(oldRightFolder, true)
-            setFolder(oldLeftFolder, false)
-        }
+        updateCopyButton()
 
         mListAdapter.setOnSelectClickListener { index ->
             if (!mBinding.swipeRefresh.isRefreshing) {
@@ -238,130 +246,56 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
                 contextMenu.add(0, index, MENU_ITEM_SELECT_ALL_RAW, "Select All RAW")
             }
         }
-
-        mBinding.swipeRefresh.setOnRefreshListener { listFolder() }
-
-        var uri: Uri? = null
-        try {
-            uri = Uri.parse(activity.settings.leftSourceUri)
-        } catch (e: Exception) {
-        }
-        setFolderUri(uri, true)
-
-        uri = null
-        try {
-            uri = Uri.parse(activity.settings.rightSourceUri)
-        } catch (e: Exception) {
-        }
-        setFolderUri(uri, false)
-
         return mBinding.root
     }
 
-    private fun setFolder(folder: UriFile?, isLeft: Boolean) {
-        if (isLeft) {
-            mLeftFolder = folder
-            if (null != folder) {
-                activity.settings.leftSourceUri = folder.uri.toString()
-                activity.settings.saveProperties()
-            }
-        }
-        else {
-            mRightFolder = folder
-            if (null != folder) {
-                activity.settings.rightSourceUri = folder.uri.toString()
-                activity.settings.saveProperties()
-            }
-        }
-
-        val txtSource = if (isLeft) mBinding.txtLeftSource else mBinding.txtRightSource
-        val txtPath = if (isLeft) mBinding.txtLeftPath else mBinding.txtRightPath
-
-        if (null == folder) {
-            txtSource.text = ""
-            txtPath.text = "<select folder>"
-            txtPath.alpha = 0.5f
-            txtPath.setTypeface(null, Typeface.ITALIC)
-        } else {
-            val sourceAndPath = getSourceAndPath(folder)
-            txtSource.text = sourceAndPath.first
-            txtPath.text = sourceAndPath.second
-            txtPath.alpha = 1f
-            txtPath.setTypeface(null, Typeface.NORMAL)
-            if (isLeft) listFolder()
-        }
-    }
-
-    private fun setFolderUri(uri: Uri?, isLeft: Boolean) {
-        if (null == uri) setFolder(null, isLeft)
-        else {
-            GlobalScope.launch(Dispatchers.IO) {
-                var folder: UriFile? = null
-                try {
-                    folder = UriFile.fromTreeUri(requireContext(), uri)
-                } catch (e: Exception) {
-                }
-                activity.runOnUiThread {
-                    setFolder(folder, isLeft)
-                }
-            }
-        }
-    }
-
-    private fun listFolder() {
-        val leftFolder = mLeftFolder
-        if( null == leftFolder ) {
-            mBinding.swipeRefresh.isRefreshing = false
-            return
-        }
-
-        mSelectedSize = 0
-        updateCopyButton()
-        mBinding.swipeRefresh.isRefreshing = true
+    private fun updateSourceItems( uriFileList: List<UriFile> ) {
         mUpdateId++
+        val updateId = mUpdateId
+        mSelectedSize = 0
         mListAdapter.items.clear()
-        mListAdapter.notifyDataSetChanged()
-        mBinding.listView.scrollToPosition(0)
-        GlobalScope.launch(Dispatchers.IO) { listFolderAsync(leftFolder, mUpdateId) }
-    }
 
-    private fun listFolderAsync(folder: UriFile, updateId: Int) {
-        val files = ArrayList<FileItem>()
+        mBinding.swipeRefresh.isRefreshing = true
 
-        val items = folder.listFiles()
-        for (item in items) {
-            val name = item.name
-            if (name.startsWith('.')) continue
-            files.add(FileItem(item))
-        }
-
-        files.sortByDescending {
-            if (it.file.isDirectory)
-                "Z " + it.file.name
+        val sortedUriFileList = uriFileList.toMutableList()
+        sortedUriFileList.sortByDescending {
+            if (it.isDirectory)
+                "Z " + it.name
             else
-                "A " + it.file.date + " " + it.file.name
+                "A " + it.name
         }
 
-        activity.runOnUiThread {
-            if (updateId == mUpdateId) {
-                mListAdapter.items.addAll(files)
-                mListAdapter.notifyDataSetChanged()
-                mBinding.swipeRefresh.isRefreshing = false
-            }
+        for(uriFile in sortedUriFileList) {
+            mListAdapter.items.add(FileItem(uriFile))
         }
 
-        //load thumbnails
-        for (index in files.indices) {
-            if (updateId != mUpdateId)
-                break
+        mListAdapter.notifyDataSetChanged()
+        updateCopyButton()
 
-            val file = files[index]
-            file.thumbnail = file.file.getThumbnail()
-            if (null != file.thumbnail) {
-                activity.runOnUiThread {
-                    if (updateId == mUpdateId) {
-                        mListAdapter.notifyItemChanged(index)
+        if (sortedUriFileList.isNotEmpty()) mBinding.listView.scrollToPosition(0)
+
+        if (sortedUriFileList.isEmpty()) {
+            mBinding.swipeRefresh.isRefreshing = false
+        } else {
+            val listCopy = mutableListOf<FileItem>()
+            listCopy.addAll(mListAdapter.items)
+
+            //load thumbnails
+            GlobalScope.launch(Dispatchers.IO) {
+                for (index in listCopy.indices) {
+                    if (updateId != mUpdateId) break
+
+                    val file = listCopy[index]
+                    file.thumbnail = file.file.getThumbnail()
+                    if (null != file.thumbnail) {
+                        activity.runOnUiThread {
+                            if (updateId == mUpdateId) mListAdapter.notifyItemChanged(index)
+                        }
                     }
+                }
+
+                activity.runOnUiThread {
+                    if (updateId == mUpdateId) mBinding.swipeRefresh.isRefreshing = false
                 }
             }
         }
@@ -371,49 +305,43 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
         if( selected != mListAdapter.items[index].isSelected ) {
             mListAdapter.items[index].isSelected = selected
             mListAdapter.notifyItemChanged(index)
-            if (selected)
-                mSelectedSize++
-            else
-                mSelectedSize--
+            mSelectedSize += if (selected) 1 else -1
         }
     }
 
-    fun unselectAll() {
-        for (index in mListAdapter.items.indices)
+    private fun unselectAll() {
+        for (index in mListAdapter.items.indices) {
             setItemState(index, false)
+        }
         updateCopyButton()
     }
 
     private fun updateCopyButton() {
-        if (activity.settings.leftSourceUri == activity.settings.rightSourceUri) {
-            mBinding.btnCopy.isEnabled = false
-        } else {
-            mBinding.btnCopy.isEnabled = mSelectedSize > 0 && null != mRightFolder
-        }
+        mBinding.btnCopy.isEnabled = null != mDestFolder && mSelectedSize > 0
     }
 
-    private fun bitmapResizesInputStream( srcInputStream: InputStream): Pair<Long, InputStream>? {
+    private fun bitmapResizedInputStream( srcInputStream: InputStream): Pair<Long, InputStream>? {
         try {
             var bitmap = BitmapFactory.decodeStream(srcInputStream)
             srcInputStream.close()
             if (null == bitmap) return null
-
-            if (bitmap.width < BITAMP_SMALL_SIZE && bitmap.height < BITAMP_SMALL_SIZE) return null
+            if (bitmap.width < BITMAP_SMALL_SIZE && bitmap.height < BITMAP_SMALL_SIZE) return null
 
             val newWidth: Int
             val newHeight: Int
 
             if (bitmap.width < bitmap.height) {
-                newHeight = BITAMP_SMALL_SIZE
-                newWidth = BITAMP_SMALL_SIZE * bitmap.width / bitmap.height
+                newHeight = BITMAP_SMALL_SIZE
+                newWidth = BITMAP_SMALL_SIZE * bitmap.width / bitmap.height
             } else {
-                newWidth = BITAMP_SMALL_SIZE
-                newHeight = BITAMP_SMALL_SIZE * bitmap.height / bitmap.width
+                newWidth = BITMAP_SMALL_SIZE
+                newHeight = BITMAP_SMALL_SIZE * bitmap.height / bitmap.width
             }
 
             bitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
             val memOutputStream = ByteArrayOutputStream()
             if (!bitmap.compress(Bitmap.CompressFormat.JPEG, BITMAP_QUALITY, memOutputStream) ) return null
+
             return Pair(memOutputStream.size().toLong(), ByteArrayInputStream( memOutputStream.toByteArray() ))
         } catch (e: java.lang.Exception) {
         }
@@ -429,7 +357,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
         }
 
         var name = sourceUri.name
-        val smallBitmap = bitmapResizesInputStream( inputStream )
+        val smallBitmap = bitmapResizedInputStream( inputStream )
         if (null == smallBitmap) {
             Log.i("COPY_FILE", "Full size (2)")
             inputStream = activity.contentResolver.openInputStream(sourceUri.uri) ?: throw FileNotFoundException(sourceUri.name)
@@ -452,7 +380,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
             ext = ".jpg"
         }
 
-        name = basename + ".small" + ext
+        name = "$basename.small$ext"
         Log.i("COPY_FILE", "Small size")
         return Triple(name, smallBitmap.first, inputStream )
     }
@@ -520,14 +448,12 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
         }
 
         try {
-            if (null != inputStream)
-                inputStream.close()
+            inputStream?.close()
         } catch (e: Exception) {
         }
 
         try {
-            if (null != outputStream)
-                outputStream.close()
+            outputStream?.close()
         } catch (e: Exception) {
         }
 
@@ -538,7 +464,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
         }
     }
 
-    data class CopyFolderInfo( val txtPrefix: String, val srcFolder: UriFile, val srcItems: ArrayList<UriFile>?, val destFolder: UriFile )
+    data class CopyFolderInfo( val txtPrefix: String, val srcItems: List<UriFile>, val destFolder: UriFile )
 
     private fun copyItemsAsync( copyInfoRoot: CopyFolderInfo, copyMode: Int, buffer: ByteArray ) {
         val copyInfoMQ = mutableListOf(copyInfoRoot)
@@ -547,7 +473,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
 
         while (copyInfoMQ.size > 0) {
             val copyInfo = copyInfoMQ.removeAt(0)
-            val sourceItems = copyInfo.srcItems ?: copyInfo.srcFolder.listFiles()
+            val sourceItems = copyInfo.srcItems
             val existingItems = copyInfo.destFolder.listFiles()
 
             total += sourceItems.size
@@ -570,8 +496,7 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
                     copyInfoMQ.add(
                         CopyFolderInfo(
                             copyInfo.txtPrefix + sourceItem.name + "/",
-                            sourceItem,
-                            null,
+                            sourceItem.listFiles(),
                             destSubFolder)
                     )
                 } else {
@@ -585,19 +510,18 @@ class FileCopyFragment(val activity: MainActivity) : Fragment() {
     private fun copyAsync(destFolder: UriFile, copyMode: Int) {
         val buffer = ByteArray(Settings.BUFFER_SIZE)
         val allItems = mListAdapter.items
-        val selectedItems = ArrayList<UriFile>()
+        val selectedItems = mutableListOf<UriFile>()
 
         for (item in allItems) {
             if (item.isSelected)
                 selectedItems.add(item.file)
         }
 
-        val leftFolder = mLeftFolder ?: return
-        copyItemsAsync(CopyFolderInfo("", leftFolder, selectedItems, destFolder), copyMode, buffer)
+        copyItemsAsync(CopyFolderInfo("", selectedItems.toList(), destFolder), copyMode, buffer)
     }
 
     private fun copy(copyMode: Int) {
-        val destFolder = mRightFolder ?: return
+        val destFolder = mDestFolder ?: return
 
         BusyDialog.show(requireFragmentManager(), "Copy Files", "Scanning...")
 

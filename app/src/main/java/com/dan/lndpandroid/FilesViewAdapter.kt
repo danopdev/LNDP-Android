@@ -16,7 +16,7 @@ class FilesViewAdapter( private val activity: MainActivity, private val recycler
     private var onSelectClick: ((Int)->Unit)? = null
     private var onCreateMenuListener: ((Int, ContextMenu?, View?, ContextMenu.ContextMenuInfo?)->Unit)? = null
 
-    val items = ArrayList<FileItem>()
+    val items = mutableListOf<FileItem>()
 
     fun setOnSelectClickListener( l: (Int)->Unit ) { onSelectClick = l }
     fun setOnCreateMenuListener( l: (Int, ContextMenu?, View?, ContextMenu.ContextMenuInfo?)->Unit ) { onCreateMenuListener = l }

@@ -8,7 +8,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
+
 
 class UriFile(
     val context: Context,
@@ -34,8 +34,8 @@ class UriFile(
 
         private val DATE_FORMAT = SimpleDateFormat("yyyy:MM:dd hh:mm:ss")
 
-        private fun queryTreeUri( context: Context, queryUri: Uri, treeUri: Uri, onlyFirstRecord: Boolean ): ArrayList<UriFile> {
-            val result = ArrayList<UriFile>()
+        private fun queryTreeUri( context: Context, queryUri: Uri, treeUri: Uri, onlyFirstRecord: Boolean ): List<UriFile> {
+            val result = mutableListOf<UriFile>()
             val authority = treeUri.authority ?: return result
 
             var cursor: Cursor? = null
@@ -81,7 +81,7 @@ class UriFile(
                 }
             }
 
-            return result
+            return result.toList()
         }
 
         fun formatTimeStamp(timestamp: Long) = DATE_FORMAT.format(Date(timestamp))
@@ -92,7 +92,7 @@ class UriFile(
             return if (list.size > 0) list[0] else null
         }
 
-        fun fromTreeUri(context: Context, treeUri: Uri): UriFile? {
+        fun fromUri(context: Context, treeUri: Uri): UriFile? {
             val documentId =
                 if (DocumentsContract.isDocumentUri(context, treeUri) ) DocumentsContract.getDocumentId(treeUri)
                 else DocumentsContract.getTreeDocumentId(treeUri)
@@ -105,14 +105,14 @@ class UriFile(
     val isDirectory = DocumentsContract.Document.MIME_TYPE_DIR.equals(mimeType)
     val supportThumbnails = (flags and DocumentsContract.Document.FLAG_SUPPORTS_THUMBNAIL) > 0
 
-    fun listFiles(): ArrayList<UriFile> {
+    fun listFiles(): List<UriFile> {
         try {
-            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, documentId) ?: return ArrayList<UriFile>()
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, documentId) ?: return listOf<UriFile>()
             return queryTreeUri(context, childrenUri, uri, false)
         } catch (e: Exception) {
         }
 
-        return ArrayList<UriFile>()
+        return listOf<UriFile>()
     }
 
     fun createFile( mimeType: String, displayName: String ): Uri? =

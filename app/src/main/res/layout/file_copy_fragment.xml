@@ -13,7 +13,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="#E0E0E0"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="5dp">
 
             <Button
                 android:id="@+id/btnCopy"
@@ -24,69 +27,43 @@
                 app:icon="@android:drawable/arrow_down_float"
                 app:iconGravity="end" />
 
-            <LinearLayout
-                android:id="@+id/layoutRight"
-                android:layout_width="0dp"
+            <Button
+                android:id="@+id/btnDestination"
+                android:layout_width="wrap_content"
                 android:layout_height="match_parent"
+                android:layout_marginStart="10dp"
                 android:layout_weight="1"
-                android:orientation="vertical"
-                android:paddingLeft="5dp"
-                android:paddingRight="5dp">
-
-                <TextView
-                    android:id="@+id/txtRightSource"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/txtRightPath"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:singleLine="true"
-                    android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-                    android:textStyle="bold" />
-            </LinearLayout>
+                android:text="Select destination"
+                android:textAllCaps="false"
+                android:textStyle="italic"
+                app:icon="@android:drawable/ic_menu_upload" />
 
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
 
-            <LinearLayout
-                android:id="@+id/layoutLeft"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
+            <Button
+                android:id="@+id/btnSourceFolder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="4dp"
                 android:layout_weight="1"
-                android:orientation="vertical"
-                android:paddingLeft="5dp"
-                android:paddingRight="5dp">
+                android:text="Source folder"
+                android:textAllCaps="false" />
 
-                <TextView
-                    android:id="@+id/txtLeftSource"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/txtLeftPath"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:singleLine="true"
-                    android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <ImageButton
-                android:id="@+id/btnSwitch"
-                android:layout_width="@android:dimen/app_icon_size"
-                android:layout_height="@android:dimen/app_icon_size"
-                android:backgroundTint="@color/purple_500"
-                app:srcCompat="@android:drawable/stat_notify_sync" />
-
+            <Button
+                android:id="@+id/btnSourceFiles"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="4dp"
+                android:layout_weight="1"
+                android:text="Source files"
+                android:textAllCaps="false" />
         </LinearLayout>
 
         <View

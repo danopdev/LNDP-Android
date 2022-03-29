@@ -37,7 +37,7 @@ import kotlin.concurrent.timer
 
 class ServerFragment(val activity: MainActivity) : Fragment() {
     companion object {
-        const val INTENT_SELECT_FOLDER = 1
+        const val INTENT_SELECT_FOLDER = 10
 
         const val NOTIFICATION_ID = 1
     }
@@ -240,7 +240,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
         )
     }
 
-    private fun lndpQueryResponse(files: ArrayList<UriFile>): String {
+    private fun lndpQueryResponse(files: List<UriFile>): String {
         val jsonArray = JSONArray()
 
         for( file in files ) {
@@ -355,7 +355,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
                 }
             }
 
-            UriFile.fromTreeUri(requireContext(), Uri.parse(activity.settings.publicFolderUri))?.let{ uriFile ->
+            UriFile.fromUri(requireContext(), Uri.parse(activity.settings.publicFolderUri))?.let{ uriFile ->
                 mPublicUriFile = uriFile
             }
 

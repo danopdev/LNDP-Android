@@ -25,9 +25,6 @@ class Settings( private val activity: Activity) {
     var serverName = android.os.Build.MODEL ?: ""
     var publicFolderUri = ""
 
-    var leftSourceUri = ""
-    var rightSourceUri = ""
-
     init {
         loadProperties()
     }
