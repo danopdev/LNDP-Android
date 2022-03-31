@@ -1,5 +1,6 @@
 package com.dan.lndpandroid
 
+import android.app.ProgressDialog
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -70,54 +71,82 @@ class FileCopyFragment(private val activity: MainActivity) : Fragment() {
         BusyDialog.create(activity)
     }
 
+    private fun runAsync(job: ()->Unit) {
+        @Suppress("DEPRECATION")
+        val dialog = ProgressDialog.show( context, "Please wait !", "", true )
+
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                job()
+            } catch (e: Exception) {
+            }
+
+            activity.runOnUiThread {
+                dialog.dismiss()
+            }
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
         super.onActivityResult(requestCode, resultCode, intent)
         if (AppCompatActivity.RESULT_OK != resultCode) return
 
         when(requestCode) {
             INTENT_SELECT_DESTINATION -> if (null != intent && null != intent.data) {
-                val uriFile = UriFile.fromTreeUri(requireContext(), intent.data as Uri)
-                mDestFolder = uriFile
+                runAsync {
+                    val uriFile = UriFile.fromTreeUri(requireContext(), intent.data as Uri)
 
-                if (null == uriFile) {
-                    mBinding.btnDestination.setTypeface(null, Typeface.ITALIC)
-                    mBinding.btnDestination.text = "Select destination"
-                } else {
-                    val lastPath = (uriFile.uri.lastPathSegment ?: "").replace(':', '\n')
-                    mBinding.btnDestination.setTypeface(null, Typeface.NORMAL)
-                    mBinding.btnDestination.text = lastPath
+                    activity.runOnUiThread {
+                        mDestFolder = uriFile
+
+                        if (null == uriFile) {
+                            mBinding.btnDestination.setTypeface(null, Typeface.ITALIC)
+                            mBinding.btnDestination.text = "Select destination"
+                        } else {
+                            val lastPath = (uriFile.uri.lastPathSegment ?: "").replace(':', '\n')
+                            mBinding.btnDestination.setTypeface(null, Typeface.NORMAL)
+                            mBinding.btnDestination.text = lastPath
+                        }
+
+                        updateCopyButton()
+                    }
                 }
-
-                updateCopyButton()
             }
 
             INTENT_SELECT_SOURCE_FOLDER -> if (null != intent && null != intent.data) {
-                val uriFile = UriFile.fromTreeUri(requireContext(), intent.data as Uri)
-                if (null != uriFile) {
-                    updateSourceItems(uriFile.listFiles())
+                runAsync {
+                    val uriFile = UriFile.fromTreeUri(requireContext(), intent.data as Uri)
+                    if (null != uriFile) {
+                        val uriFileList = uriFile.listFiles()
+
+                        activity.runOnUiThread {
+                            updateSourceItems(uriFileList)
+                        }
+                    }
                 }
             }
 
             INTENT_SELECT_SOURCE_FILES -> if (null != intent) {
-                val clipData = intent.clipData
-                if (null != clipData) {
+                runAsync {
                     val uriFileList = mutableListOf<UriFile>()
-                    val count = clipData.itemCount
-                    for (i in 0 until count) {
-                        val uriFile = UriFile.fromSingleUri(requireContext(), clipData.getItemAt(i).uri)
-                        if (null != uriFile) {
-                            uriFileList.add(uriFile)
+                    val clipData = intent.clipData
+                    if (null != clipData) {
+                        val count = clipData.itemCount
+                        for (i in 0 until count) {
+                            val uriFile =
+                                UriFile.fromSingleUri(requireContext(), clipData.getItemAt(i).uri)
+                            if (null != uriFile) uriFileList.add(uriFile)
+                        }
+                    } else {
+                        val data = intent.data
+                        if (null != data) {
+                            val uriFile = UriFile.fromSingleUri(requireContext(), data)
+                            if (null != uriFile) uriFileList.add(uriFile)
                         }
                     }
-                    updateSourceItems(uriFileList)
-                } else {
-                    val data = intent.data
-                    if (null != data) {
-                        val uriFile = UriFile.fromSingleUri(requireContext(), data)
-                        if (null != uriFile) {
-                            val uriFileList = mutableListOf<UriFile>(uriFile)
-                            updateSourceItems(uriFileList)
-                        }
+
+                    activity.runOnUiThread {
+                        updateSourceItems(uriFileList)
                     }
                 }
             }
