@@ -83,8 +83,9 @@ class FileCopyFragment(private val activity: MainActivity) : Fragment() {
                     mBinding.btnDestination.setTypeface(null, Typeface.ITALIC)
                     mBinding.btnDestination.text = "Select destination"
                 } else {
+                    val lastPath = (uriFile.uri.lastPathSegment ?: "").replace(':', '\n')
                     mBinding.btnDestination.setTypeface(null, Typeface.NORMAL)
-                    mBinding.btnDestination.text = uriFile.name
+                    mBinding.btnDestination.text = lastPath
                 }
 
                 updateCopyButton()
