@@ -31,7 +31,6 @@ import java.io.ByteArrayOutputStream
 import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.URLDecoder
-import java.util.concurrent.TimeUnit
 import kotlin.concurrent.timer
 
 
@@ -252,7 +251,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
             jsonObject.put("size", file.length)
             jsonObject.put("date", file.timestamp)
             jsonObject.put("type", file.mimeType)
-            jsonObject.put("thumb", file.supportThumbnails)
+            jsonObject.put("thumb", file.hasThumb )
 
             jsonArray.put(jsonObject)
         }

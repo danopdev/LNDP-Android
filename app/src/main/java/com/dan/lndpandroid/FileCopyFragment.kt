@@ -66,6 +66,7 @@ class FileCopyFragment(private val activity: MainActivity) : Fragment() {
     private var mDestFolder: UriFile? = null
     private var mUpdateId = 0
     private var mSelectedSize = 0
+    private var mInitialUriList: List<Uri>? = null
 
     init {
         BusyDialog.create(activity)
@@ -127,30 +128,45 @@ class FileCopyFragment(private val activity: MainActivity) : Fragment() {
             }
 
             INTENT_SELECT_SOURCE_FILES -> if (null != intent) {
-                runAsync {
-                    val uriFileList = mutableListOf<UriFile>()
-                    val clipData = intent.clipData
-                    if (null != clipData) {
-                        val count = clipData.itemCount
-                        for (i in 0 until count) {
-                            val uriFile =
-                                UriFile.fromSingleUri(requireContext(), clipData.getItemAt(i).uri)
-                            if (null != uriFile) uriFileList.add(uriFile)
-                        }
-                    } else {
-                        val data = intent.data
-                        if (null != data) {
-                            val uriFile = UriFile.fromSingleUri(requireContext(), data)
-                            if (null != uriFile) uriFileList.add(uriFile)
-                        }
-                    }
+                val uriList = mutableListOf<Uri>()
+                val clipData = intent.clipData
 
-                    activity.runOnUiThread {
-                        updateSourceItems(uriFileList)
+                if (null != clipData) {
+                    val count = clipData.itemCount
+                    for (i in 0 until count) {
+                        uriList.add(clipData.getItemAt(i).uri)
+                    }
+                } else {
+                    val data = intent.data
+                    if (null != data) {
+                        uriList.add(data)
                     }
                 }
+
+                setSourceUriList( uriList.toList() )
             }
         }
+    }
+
+    fun setInitialSourceUriList( uriList: List<Uri>? ) {
+        mInitialUriList = uriList
+    }
+
+
+    private fun setSourceUriList( uriList: List<Uri> ) {
+        runAsync {
+            val uriFileList = mutableListOf<UriFile>()
+            for (uri in uriList) {
+                val uriFile =
+                    UriFile.fromSingleUri(requireContext(), uri)
+                if (null != uriFile) uriFileList.add(uriFile)
+            }
+
+            activity.runOnUiThread {
+                updateSourceItems(uriFileList)
+            }
+        }
+
     }
 
     override fun onContextItemSelected(item: MenuItem): Boolean {
@@ -286,6 +302,13 @@ class FileCopyFragment(private val activity: MainActivity) : Fragment() {
                 contextMenu.add(0, index, MENU_ITEM_SELECT_ALL_RAW, "Select All RAW")
             }
         }
+
+        val initialUriList = mInitialUriList
+        if (null != initialUriList) {
+            mInitialUriList = null
+            setSourceUriList(initialUriList)
+        }
+
         return mBinding.root
     }
 

@@ -1,8 +1,11 @@
 package com.dan.lndpandroid
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.os.Parcelable
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -17,6 +20,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         val PERMISSIONS = arrayOf(
+            Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.INTERNET,
             Manifest.permission.ACCESS_NETWORK_STATE,
             Manifest.permission.ACCESS_WIFI_STATE
@@ -42,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
             REQUEST_PERMISSIONS -> handleRequestPermissions(grantResults)
         }
@@ -64,6 +69,35 @@ class MainActivity : AppCompatActivity() {
         mBinding.tabs.setupWithViewPager( mBinding.viewPager )
 
         setContentView(mBinding.root)
+
+        if (null != intent && null != intent.action) {
+            val initialSourceUriList = mutableListOf<Uri>()
+
+            when(intent.action) {
+                Intent.ACTION_SEND -> {
+                    intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM)?.let {
+                        initialSourceUriList.add(it as Uri)
+                    }
+                }
+
+                Intent.ACTION_VIEW -> {
+                    intent.data?.let {
+                        initialSourceUriList.add(it)
+                    }
+                }
+
+                Intent.ACTION_SEND_MULTIPLE -> {
+                    intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)
+                        ?.let { list ->
+                            list.forEach { initialSourceUriList.add(it as Uri) }
+                        }
+                }
+            }
+
+            if (initialSourceUriList.size > 0) {
+                mFileCopyFragment.setInitialSourceUriList(initialSourceUriList.toList())
+            }
+        }
     }
 
     private fun askPermissions(): Boolean {
