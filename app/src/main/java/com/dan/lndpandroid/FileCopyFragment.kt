@@ -475,7 +475,12 @@ class FileCopyFragment(private val activity: MainActivity) : Fragment() {
 
             if (sourceSize > 0) {
                 val startTime = System.currentTimeMillis()
-                val newDocumentUri = existingUri?.uri ?: destFolder.createFile(sourceUri.mimeType, name)
+                val newDocumentUri = if (null != existingUri && MENU_COPY_SMALL != copyMode) {
+                    existingUri.uri
+                } else {
+                    destFolder.createFile(sourceUri.mimeType, name)
+                }
+
                 if (null != newDocumentUri) {
                     outputStream = activity.contentResolver.openOutputStream(newDocumentUri, "w")
                     if (null != outputStream) {
@@ -564,7 +569,13 @@ class FileCopyFragment(private val activity: MainActivity) : Fragment() {
                     )
                 } else {
                     if (null != existingItem && existingItem.isDirectory) continue
-                    copyFileAsync(copyInfo.txtPrefix, sourceItem, copyInfo.destFolder, copyMode, buffer, existingItem)
+                    copyFileAsync(
+                        copyInfo.txtPrefix,
+                        sourceItem,
+                        copyInfo.destFolder,
+                        copyMode,
+                        buffer,
+                        existingItem)
                 }
             }
         }
