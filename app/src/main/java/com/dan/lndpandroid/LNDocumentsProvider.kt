@@ -36,7 +36,6 @@ class LNDocumentsProvider : DocumentsProvider() {
         const val LOG_TAG = "LNDP"
         const val AUTHORITY = "com.dan.lndpandroid"
         const val HTTP_ERROR = "HTTP Error"
-        const val BUFFER_SIZE = 1024*500
 
         private val DEFAULT_ROOT_PROJECTION = arrayOf(
             Root.COLUMN_ROOT_ID,
@@ -355,7 +354,7 @@ class LNDocumentsProvider : DocumentsProvider() {
                 val fos = FileOutputStream(writePipe.fileDescriptor)
 
                 while (true) {
-                    val result = readUrlConnection(getUrlConnection(getGetDocumentUrl(documentId, "documentRead", "&offset=${offset}&size=${BUFFER_SIZE}"))) ?: break
+                    val result = readUrlConnection(getUrlConnection(getGetDocumentUrl(documentId, "documentRead", "&offset=${offset}&size=${Settings.BUFFER_SIZE}"))) ?: break
 
                     if (HttpURLConnection.HTTP_OK != result.first) {
                         success = false
@@ -402,7 +401,7 @@ class LNDocumentsProvider : DocumentsProvider() {
             var success = false
 
             try {
-                val buffer = ByteArray(BUFFER_SIZE)
+                val buffer = ByteArray(Settings.BUFFER_SIZE)
                 val fis = FileInputStream(readPipe.fileDescriptor)
                 createOrTruncateDocument(documentId)
 
