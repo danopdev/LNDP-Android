@@ -404,7 +404,7 @@ class LNDocumentsProvider : DocumentsProvider() {
             try {
                 val buffer = ByteArray(BUFFER_SIZE)
                 val fis = FileInputStream(readPipe.fileDescriptor)
-                truncateDocument(documentId)
+                createOrTruncateDocument(documentId)
 
                 while (true) {
                     readPipe.checkError()
@@ -527,7 +527,7 @@ class LNDocumentsProvider : DocumentsProvider() {
         throw FileNotFoundException()
     }
 
-    private fun truncateDocument(parentId: String) {
+    private fun createOrTruncateDocument(parentId: String) {
         @Suppress("DEPRECATION")
         val serverConnection = getUrlConnection( getGetDocumentUrl( parentId, "documentCreate" ) ) ?: throw FileNotFoundException()
         val data = readUrlConnection( serverConnection ) ?: throw FileNotFoundException()
