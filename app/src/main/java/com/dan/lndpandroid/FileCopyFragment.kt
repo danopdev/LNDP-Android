@@ -259,7 +259,7 @@ class FileCopyFragment(private val activity: MainActivity) : Fragment() {
         startActivityForResult(intent, INTENT_SELECT_SOURCE_FILES)
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         super.onCreate(savedInstanceState)
 
         if (null == defaultFileBitmap) defaultFileBitmap = AppCompatResources.getDrawable(requireContext(), R.mipmap.ic_file)?.toBitmap()
