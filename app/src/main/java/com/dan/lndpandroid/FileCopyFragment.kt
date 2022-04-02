@@ -76,7 +76,7 @@ class FileCopyFragment(private val activity: MainActivity) : Fragment() {
 
         when(requestCode) {
             INTENT_SELECT_DESTINATION -> if (null != intent && null != intent.data) {
-                val uriFile = UriFile.fromUri(requireContext(), intent.data as Uri)
+                val uriFile = UriFile.fromTreeUri(requireContext(), intent.data as Uri)
                 mDestFolder = uriFile
 
                 if (null == uriFile) {
@@ -91,23 +91,33 @@ class FileCopyFragment(private val activity: MainActivity) : Fragment() {
             }
 
             INTENT_SELECT_SOURCE_FOLDER -> if (null != intent && null != intent.data) {
-                val uriFile = UriFile.fromUri(requireContext(), intent.data as Uri)
+                val uriFile = UriFile.fromTreeUri(requireContext(), intent.data as Uri)
                 if (null != uriFile) {
                     updateSourceItems(uriFile.listFiles())
                 }
             }
 
-            INTENT_SELECT_SOURCE_FILES -> {
-                intent?.clipData?.let { clipData ->
+            INTENT_SELECT_SOURCE_FILES -> if (null != intent) {
+                val clipData = intent.clipData
+                if (null != clipData) {
                     val uriFileList = mutableListOf<UriFile>()
                     val count = clipData.itemCount
                     for (i in 0 until count) {
-                        val uriFile = UriFile.fromUri(requireContext(), intent.data as Uri)
+                        val uriFile = UriFile.fromSingleUri(requireContext(), clipData.getItemAt(i).uri)
                         if (null != uriFile) {
                             uriFileList.add(uriFile)
                         }
                     }
                     updateSourceItems(uriFileList)
+                } else {
+                    val data = intent.data
+                    if (null != data) {
+                        val uriFile = UriFile.fromSingleUri(requireContext(), data)
+                        if (null != uriFile) {
+                            val uriFileList = mutableListOf<UriFile>(uriFile)
+                            updateSourceItems(uriFileList)
+                        }
+                    }
                 }
             }
         }

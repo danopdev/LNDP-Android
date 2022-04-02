@@ -235,7 +235,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
 
     private fun lndpGetUriFile(documentId: String): UriFile {
         if (documentId == "/") return mPublicUriFile
-        return UriFile.fromDocumentId(requireContext(), mPublicUriFile.uri, documentId) ?: throw Exception(
+        return UriFile.fromTreeDocumentId(requireContext(), mPublicUriFile.uri, documentId) ?: throw Exception(
             "Invalid documentId"
         )
     }
@@ -355,7 +355,7 @@ class ServerFragment(val activity: MainActivity) : Fragment() {
                 }
             }
 
-            UriFile.fromUri(requireContext(), Uri.parse(activity.settings.publicFolderUri))?.let{ uriFile ->
+            UriFile.fromTreeUri(requireContext(), Uri.parse(activity.settings.publicFolderUri))?.let{ uriFile ->
                 mPublicUriFile = uriFile
             }
 
