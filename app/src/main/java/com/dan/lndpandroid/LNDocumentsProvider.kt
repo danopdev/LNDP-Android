@@ -27,6 +27,7 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.timer
 
@@ -56,7 +57,7 @@ class LNDocumentsProvider : DocumentsProvider() {
 
         private fun serviceUseSSL(service: NsdServiceInfo): Boolean {
             try {
-                val sslAttr = service.attributes["ssl"].toString().toUpperCase()
+                val sslAttr = service.attributes["ssl"].toString().toUpperCase(Locale.getDefault())
                 return sslAttr == "TRUE" || sslAttr == "T" || sslAttr == "1"
             } catch(e: Exception) {
             }
@@ -357,7 +358,7 @@ class LNDocumentsProvider : DocumentsProvider() {
         val writePipe = pipes[1]
         var canReturn = false
 
-        GlobalScope.launch(Dispatchers.Default) {
+        GlobalScope.launch(Dispatchers.IO) {
             var success = true
 
             try {
@@ -408,7 +409,7 @@ class LNDocumentsProvider : DocumentsProvider() {
         val readPipe = pipes[0]
         val writePipe = pipes[1]
 
-        GlobalScope.launch(Dispatchers.Default) {
+        GlobalScope.launch(Dispatchers.IO) {
             var success = false
 
             try {
