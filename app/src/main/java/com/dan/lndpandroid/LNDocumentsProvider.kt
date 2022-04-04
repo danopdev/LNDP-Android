@@ -53,6 +53,16 @@ class LNDocumentsProvider : DocumentsProvider() {
             Document.COLUMN_FLAGS,
             Document.COLUMN_SIZE
         )
+
+        private fun serviceUseSSL(service: NsdServiceInfo): Boolean {
+            try {
+                val sslAttr = service.attributes["ssl"].toString().toUpperCase()
+                return sslAttr == "TRUE" || sslAttr == "T" || sslAttr == "1"
+            } catch(e: Exception) {
+            }
+
+            return false
+        }
     }
 
     private val resolvedServers = ConcurrentHashMap<String, NsdServiceInfo>()
@@ -127,7 +137,7 @@ class LNDocumentsProvider : DocumentsProvider() {
 
     }
 
-    data class ServerInfo(val name: String, val path: String, val host: String, val port: Int)
+    data class ServerInfo(val name: String, val path: String, val host: String, val port: Int, val useSSL: Boolean, val protocol: String)
     data class ServerUrl( val name: String, val url: URL )
     data class ServerConnection(val serverUrl: ServerUrl, val connection: HttpURLConnection)
 
@@ -229,7 +239,7 @@ class LNDocumentsProvider : DocumentsProvider() {
                     notifyRootChanged()
                 }
 
-                Log.i(LOG_TAG, "Service lost -> ${name}")
+                Log.i(LOG_TAG, "Service lost -> $name")
                 resolveNext()
             }
         }
@@ -244,7 +254,7 @@ class LNDocumentsProvider : DocumentsProvider() {
                     foundServers.remove(name)
                 }
 
-                Log.i(LOG_TAG, "Service resolved -> ${name} - ${serviceInfo.host.hostAddress} : ${serviceInfo.port}")
+                Log.i(LOG_TAG, "Service resolved -> $name - ${serviceInfo.host.hostAddress} : ${serviceInfo.port}")
 
                 resolvedServers[name] = serviceInfo
                 notifyRootChanged()
@@ -261,20 +271,21 @@ class LNDocumentsProvider : DocumentsProvider() {
         val path = documentId.substring(index+1)
         val serviceInfo = resolvedServers[name] ?: return null
         val host = serviceInfo.host ?: return null
-        return ServerInfo( name, path, host.hostAddress, serviceInfo.port )
+        val useSSL = serviceUseSSL(serviceInfo)
+        return ServerInfo( name, path, host.hostAddress, serviceInfo.port, useSSL, if (useSSL) "https" else "http")
     }
 
     private fun getGetDocumentUrl(documentId: String?, prefix: String, extra: String = ""): ServerUrl? {
         val serviceInfo = getServerInfo(documentId) ?: return null
         @Suppress("DEPRECATION")
-        return ServerUrl(serviceInfo.name, URL("http://${serviceInfo.host}:${serviceInfo.port}/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}${extra}"))
+        return ServerUrl(serviceInfo.name, URL("${serviceInfo.protocol}://${serviceInfo.host}:${serviceInfo.port}/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}${extra}"))
     }
 
     private fun getPutUrl(documentId: String?, prefix: String): Pair<ServerUrl,String>? {
         val serviceInfo = getServerInfo(documentId) ?: return null
         @Suppress("DEPRECATION")
         return Pair(
-            ServerUrl(serviceInfo.name, URL("http://${serviceInfo.host}:${serviceInfo.port}/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}") ),
+            ServerUrl(serviceInfo.name, URL("${serviceInfo.protocol}://${serviceInfo.host}:${serviceInfo.port}/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}") ),
             serviceInfo.path)
     }
 
