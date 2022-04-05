@@ -1,5 +1,6 @@
 package com.dan.lndpandroid
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.AssetFileDescriptor
 import android.database.Cursor
@@ -29,6 +30,7 @@ import java.net.URL
 import java.net.URLEncoder
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import javax.net.ssl.*
 import kotlin.concurrent.timer
 
 
@@ -57,7 +59,8 @@ class LNDocumentsProvider : DocumentsProvider() {
 
         private fun serviceUseSSL(service: NsdServiceInfo): Boolean {
             try {
-                val sslAttr = service.attributes["ssl"].toString().toUpperCase(Locale.getDefault())
+                val sslAttrBin = service.attributes["ssl"] ?: return false
+                val sslAttr = String(sslAttrBin).toUpperCase(Locale.getDefault())
                 return sslAttr == "TRUE" || sslAttr == "T" || sslAttr == "1"
             } catch(e: Exception) {
             }
@@ -74,6 +77,22 @@ class LNDocumentsProvider : DocumentsProvider() {
     private lateinit var deviceId: String
     private var isConnected = false
     private var isResolving = false
+    private val sslSocketFactory : SSLSocketFactory
+
+    init {
+        val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+            @SuppressLint("TrustAllX509TrustManager")
+            override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
+            @SuppressLint("TrustAllX509TrustManager")
+            override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
+            override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> { return arrayOf() }
+        })
+
+        val sslContext = SSLContext.getInstance("SSL")
+        sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+
+        sslSocketFactory = sslContext.socketFactory
+    }
 
     private val connectivityManagerNetworkCallback = object: ConnectivityManager.NetworkCallback() {
         override fun onUnavailable() {
@@ -139,7 +158,7 @@ class LNDocumentsProvider : DocumentsProvider() {
     }
 
     data class ServerInfo(val name: String, val path: String, val host: String, val port: Int, val useSSL: Boolean, val protocol: String)
-    data class ServerUrl( val name: String, val url: URL )
+    data class ServerUrl( val name: String, val url: URL, val useSSL: Boolean )
     data class ServerConnection(val serverUrl: ServerUrl, val connection: HttpURLConnection)
 
     private fun startDiscovery() {
@@ -279,27 +298,45 @@ class LNDocumentsProvider : DocumentsProvider() {
     private fun getGetDocumentUrl(documentId: String?, prefix: String, extra: String = ""): ServerUrl? {
         val serviceInfo = getServerInfo(documentId) ?: return null
         @Suppress("DEPRECATION")
-        return ServerUrl(serviceInfo.name, URL("${serviceInfo.protocol}://${serviceInfo.host}:${serviceInfo.port}/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}${extra}"))
+        return ServerUrl(
+            serviceInfo.name,
+            URL("${serviceInfo.protocol}://${serviceInfo.host}:${serviceInfo.port}/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}${extra}"),
+            serviceInfo.useSSL
+        )
     }
 
     private fun getPutUrl(documentId: String?, prefix: String): Pair<ServerUrl,String>? {
         val serviceInfo = getServerInfo(documentId) ?: return null
         @Suppress("DEPRECATION")
         return Pair(
-            ServerUrl(serviceInfo.name, URL("${serviceInfo.protocol}://${serviceInfo.host}:${serviceInfo.port}/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}") ),
+            ServerUrl(
+                serviceInfo.name,
+                URL("${serviceInfo.protocol}://${serviceInfo.host}:${serviceInfo.port}/${prefix}?path=${URLEncoder.encode(serviceInfo.path)}"),
+                serviceInfo.useSSL
+            ),
             serviceInfo.path)
     }
 
     private fun getUrlConnection( serverUrl: ServerUrl? ): ServerConnection? {
         if (null == serverUrl) return null
-        val connection = serverUrl.url.openConnection() as HttpURLConnection?
-        if (null == connection) return null
+        val connection = serverUrl.url.openConnection() as HttpURLConnection? ?: return null
 
         connection.connectTimeout = Settings.URL_TIMEOUT
         connection.readTimeout = Settings.URL_TIMEOUT
         connection.setRequestProperty("Authorization", "Bearer " + deviceId)
-        connection.setUseCaches(false)
-        connection.setDoInput(true)
+
+        if (serverUrl.useSSL) {
+            try {
+                val connectionHttps = connection as HttpsURLConnection
+                connectionHttps.setHostnameVerifier { _, _ -> true }
+                connectionHttps.sslSocketFactory = sslSocketFactory
+            } catch (e: Exception) {
+                return null
+            }
+        }
+
+        connection.useCaches = false
+        connection.doInput = true
 
         return ServerConnection(serverUrl, connection)
     }
