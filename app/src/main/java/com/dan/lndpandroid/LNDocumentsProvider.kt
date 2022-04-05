@@ -366,12 +366,9 @@ class LNDocumentsProvider : DocumentsProvider() {
             val isReadOnly = item.getBoolean("isreadonly")
 
             var flags = 0
-            if (!isReadOnly)
-                flags = flags or Document.FLAG_SUPPORTS_DELETE or Document.FLAG_SUPPORTS_WRITE or Document.FLAG_SUPPORTS_RENAME
-            if (isDir && !isReadOnly)
-                flags = flags or Document.FLAG_DIR_SUPPORTS_CREATE
-            if (item.getBoolean("thumb"))
-                flags = flags or Document.FLAG_SUPPORTS_THUMBNAIL
+            if (!isReadOnly) flags = flags or Document.FLAG_SUPPORTS_DELETE or Document.FLAG_SUPPORTS_WRITE or Document.FLAG_SUPPORTS_RENAME
+            if (isDir && !isReadOnly) flags = flags or Document.FLAG_DIR_SUPPORTS_CREATE
+            if (item.getBoolean("thumb")) flags = flags or Document.FLAG_SUPPORTS_THUMBNAIL
 
             val mimeType = if (isDir) Document.MIME_TYPE_DIR else item.getString("type")
 
