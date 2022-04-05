@@ -18,6 +18,28 @@ The Android application:
 
 For the linux server check [LNDP-Server](https://github.com/danopdev/LNDP-Server) project.
 
+## Screenshots
+
+### File Copy Tab
+
+Allow to copy, update and copy "small".
+
+![Main view](screenshots/main_view.png) | ![Copy modes](screenshots/copy_menu.png)
+--- | ---
+
+### Android Open Document 
+
+This is available for all andoid applications (ACTION_OPEN_DOCUMENT / ACTION_OPEN_DOCUMENT_TREE intets) unless it specify EXTRA_LOCAL_ONLY.
+
+![Open document tree](screenshots/server_list_open_document.png)
+
+### Server TAB
+
+Allow to expose (read-only / use only HTTP) files to other devices.
+
+![Default](screenshots/server_tab.png) | ![Server started](screenshots/server_started.png)
+--- | ---
+
 ## TODO
 
 * Read-only server: add support for HTTPS with a self signed certificate generated "on the fly"
