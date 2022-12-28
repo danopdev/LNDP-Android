@@ -63,6 +63,7 @@ class LNDocumentsProvider : DocumentsProvider() {
                 val sslAttr = String(sslAttrBin).toUpperCase(Locale.getDefault())
                 return sslAttr == "TRUE" || sslAttr == "T" || sslAttr == "1"
             } catch(e: Exception) {
+                e.printStackTrace()
             }
 
             return false
@@ -166,6 +167,7 @@ class LNDocumentsProvider : DocumentsProvider() {
             try {
                 nsdManager.discoverServices(Settings.SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
             } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -175,6 +177,7 @@ class LNDocumentsProvider : DocumentsProvider() {
             try {
                 nsdManager.stopServiceDiscovery(discoveryListener)
             } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -194,6 +197,7 @@ class LNDocumentsProvider : DocumentsProvider() {
                     }
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -331,6 +335,7 @@ class LNDocumentsProvider : DocumentsProvider() {
                 connectionHttps.setHostnameVerifier { _, _ -> true }
                 connectionHttps.sslSocketFactory = sslSocketFactory
             } catch (e: Exception) {
+                e.printStackTrace()
                 return null
             }
         }
@@ -343,12 +348,21 @@ class LNDocumentsProvider : DocumentsProvider() {
 
     private fun readUrlConnection( serverConnection: ServerConnection? ): Pair<Int, ByteArray>? {
         if (null == serverConnection) return null
-        val data = serverConnection.connection.inputStream.readBytes()
-        serverConnection.connection.inputStream.close()
+
+        val data: ByteArray
+
+        try {
+            data = serverConnection.connection.inputStream.readBytes()
+            serverConnection.connection.inputStream.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        }
 
         try {
             serverConnection.connection.disconnect()
         } catch (e: Exception) {
+            e.printStackTrace()
         }
 
         return Pair(serverConnection.connection.responseCode, data)
@@ -427,6 +441,7 @@ class LNDocumentsProvider : DocumentsProvider() {
                     writePipe.closeWithError(HTTP_ERROR)
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
@@ -486,6 +501,7 @@ class LNDocumentsProvider : DocumentsProvider() {
                     readPipe.closeWithError(HTTP_ERROR)
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
@@ -620,11 +636,14 @@ class LNDocumentsProvider : DocumentsProvider() {
                 fos.write(result.second)
                 size = result.second.size
             }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         try {
             writePipe.close()
         } catch (e: Exception) {
+            e.printStackTrace()
         }
 
         if (size > 0)
@@ -633,6 +652,7 @@ class LNDocumentsProvider : DocumentsProvider() {
         try {
             readPipe.close()
         } catch (e: Exception) {
+            e.printStackTrace()
         }
 
         throw FileNotFoundException()
